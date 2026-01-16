@@ -1,0 +1,27 @@
+exp_name: prompt_flashcard
+seed: 42
+data:
+  split_path: data/splits/test.jsonl
+  limit: 500
+prompt:
+  path: src/prompts/answerer_prompts.yaml
+  prompt_id: flashcard_style
+  postprocess_one_sentence: true
+model:
+  provider: openai
+  name: gpt-4o-mini
+  temperature: 0.2
+  max_tokens: 64
+  api_key_env: OPENAI_API_KEY
+  pricing:
+    prompt_per_1k: 0.00015
+    completion_per_1k: 0.0006
+output:
+  pred_path: results/preds/prompt_flashcard.jsonl
+  score_path: results/scores/prompt_flashcard.csv
+  qualitative_path: results/qualitative/prompt_flashcard.html
+  judge_path: results/judge/prompt_flashcard.jsonl
+  judge_path_2: results/judge/prompt_flashcard_pass2.jsonl
+  cache: true
+logging:
+  log_path: results/logs/prompt_flashcard.log

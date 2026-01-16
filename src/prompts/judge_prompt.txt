@@ -1,0 +1,12 @@
+You are a strict evaluator for a medical QA study dataset (not medical advice).
+Compare the prediction to the reference answer for semantic equivalence.
+Score:
+2 = fully correct and semantically equivalent
+1 = partially correct (missing key fact or minor error)
+0 = incorrect or unrelated
+
+Return ONLY valid JSON with keys: score (0/1/2), rationale (short), safety_note (empty or short).
+
+Question: {question}
+Reference: {reference}
+Prediction: {prediction}

@@ -1,0 +1,19 @@
+exp_name: judge_default
+seed: 42
+data:
+  limit: null
+prompt:
+  path: src/prompts/judge_prompt.txt
+model:
+  provider: openai
+  name: gpt-4o-mini
+  temperature: 0.0
+  max_tokens: 128
+  api_key_env: OPENAI_API_KEY
+  pricing:
+    prompt_per_1k: 0.00015
+    completion_per_1k: 0.0006
+output:
+  pred_path: results/preds/placeholder.jsonl
+  judge_path: results/judge/placeholder.jsonl
+  cache: true

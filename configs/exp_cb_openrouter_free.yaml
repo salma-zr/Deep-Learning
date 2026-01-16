@@ -1,0 +1,32 @@
+exp_name: cb_openrouter_free
+seed: 42
+data:
+  split_path: data/splits/test.jsonl
+  limit: 500
+prompt:
+  path: src/prompts/answerer_prompts.yaml
+  prompt_id: one_sentence_strict
+  postprocess_one_sentence: true
+model:
+  provider: openrouter
+  name: meta-llama/llama-3.1-8b-instruct:free
+  base_url: https://openrouter.ai/api/v1
+  api_key_env: OPENROUTER_API_KEY
+  temperature: 0.2
+  max_tokens: 64
+  pricing:
+    prompt_per_1k: 0.0
+    completion_per_1k: 0.0
+  extra:
+    extra_headers:
+      X-Title: medical-qa-study
+      HTTP-Referer: http://localhost
+output:
+  pred_path: results/preds/cb_openrouter_free.jsonl
+  score_path: results/scores/cb_openrouter_free.csv
+  qualitative_path: results/qualitative/cb_openrouter_free.html
+  judge_path: results/judge/cb_openrouter_free.jsonl
+  judge_path_2: results/judge/cb_openrouter_free_pass2.jsonl
+  cache: true
+logging:
+  log_path: results/logs/cb_openrouter_free.log

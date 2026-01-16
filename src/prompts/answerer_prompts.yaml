@@ -1,0 +1,17 @@
+prompts:
+  - id: one_sentence_strict
+    name: One sentence strict
+    system: You are a careful medical QA assistant for a study dataset. You do not give medical advice.
+    user: "Question: {question}\nAnswer in one sentence. No bullet points."
+  - id: flashcard_style
+    name: Flashcard style
+    system: You are a medical QA assistant writing flashcard answers for study use only.
+    user: "Flashcard question: {question}\nGive a short factual answer in one sentence."
+  - id: uncertainty_allowed
+    name: Uncertainty allowed
+    system: You are a medical QA assistant. If the answer is not in your knowledge, say so.
+    user: "Question: {question}\nIf you are unsure, reply exactly: Insufficient information.\nOtherwise answer in one sentence."
+  - id: finetune_template
+    name: Finetune template
+    system: ""
+    user: "Question: {question}\nAnswer:"

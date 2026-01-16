@@ -1,0 +1,23 @@
+exp_name: cb_ollama_llama3_8b
+seed: 42
+data:
+  split_path: data/splits/test.jsonl
+  limit: 500
+prompt:
+  path: src/prompts/answerer_prompts.yaml
+  prompt_id: one_sentence_strict
+  postprocess_one_sentence: true
+model:
+  provider: ollama
+  name: llama3.1:8b
+  temperature: 0.2
+  max_tokens: 64
+output:
+  pred_path: results/preds/cb_ollama_llama3_8b.jsonl
+  score_path: results/scores/cb_ollama_llama3_8b.csv
+  qualitative_path: results/qualitative/cb_ollama_llama3_8b.html
+  judge_path: results/judge/cb_ollama_llama3_8b.jsonl
+  judge_path_2: results/judge/cb_ollama_llama3_8b_pass2.jsonl
+  cache: true
+logging:
+  log_path: results/logs/cb_ollama_llama3_8b.log

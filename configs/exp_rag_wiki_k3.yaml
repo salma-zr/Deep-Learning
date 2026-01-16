@@ -1,0 +1,35 @@
+exp_name: rag_wiki_k3
+seed: 42
+data:
+  split_path: data/splits/test.jsonl
+  limit: 500
+prompt:
+  path: src/prompts/rag_prompt.txt
+  system: You are a careful medical QA assistant for a study dataset. You do not give medical advice.
+  postprocess_one_sentence: true
+model:
+  provider: openai
+  name: gpt-4o-mini
+  temperature: 0.2
+  max_tokens: 64
+  api_key_env: OPENAI_API_KEY
+  pricing:
+    prompt_per_1k: 0.00015
+    completion_per_1k: 0.0006
+retrieval:
+  provider: wikipedia
+  lang: en
+  search_top_k: 5
+  top_k: 3
+  chunk_size: 200
+  cache_path: data/rag_cache/rag_wiki_k3.jsonl
+  cache: true
+output:
+  pred_path: results/preds/rag_wiki_k3.jsonl
+  score_path: results/scores/rag_wiki_k3.csv
+  qualitative_path: results/qualitative/rag_wiki_k3.html
+  judge_path: results/judge/rag_wiki_k3.jsonl
+  judge_path_2: results/judge/rag_wiki_k3_pass2.jsonl
+  cache: true
+logging:
+  log_path: results/logs/rag_wiki_k3.log

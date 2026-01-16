@@ -1,0 +1,43 @@
+exp_name: ft_20k
+seed: 42
+data:
+  train_path: data/splits/train.jsonl
+  train_limit: 20000
+  split_path: data/splits/test.jsonl
+  limit: 500
+prompt:
+  path: src/prompts/answerer_prompts.yaml
+  prompt_id: finetune_template
+  postprocess_one_sentence: true
+model:
+  provider: hf
+  name: google/flan-t5-base
+  model_type: seq2seq
+  adapter_path: results/finetune/ft_20k
+  temperature: 0.2
+  max_tokens: 64
+finetune:
+  format: seq2seq
+  prompt_template: "Question: {question}\nAnswer:"
+  prepared_path: data/finetune/ft_20k.jsonl
+  output_dir: results/finetune/ft_20k
+  use_qlora: true
+  symbolic: true
+  max_length: 256
+  batch_size: 2
+  epochs: 1
+  learning_rate: 0.0002
+  lora:
+    r: 8
+    alpha: 16
+    dropout: 0.05
+    target_modules: ["q", "v"]
+output:
+  pred_path: results/preds/ft_20k.jsonl
+  score_path: results/scores/ft_20k.csv
+  qualitative_path: results/qualitative/ft_20k.html
+  judge_path: results/judge/ft_20k.jsonl
+  judge_path_2: results/judge/ft_20k_pass2.jsonl
+  cache: true
+logging:
+  log_path: results/logs/ft_20k.log

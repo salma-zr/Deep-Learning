@@ -1,0 +1,29 @@
+report_tex: report/report.tex
+output_dir: report/output
+figures_dir: results/figures
+output_assets_dir: results/report_assets
+experiments:
+  - exp_name: cb_ollama_llama3_8b
+    score_path: results/scores/cb_ollama_llama3_8b.csv
+  - exp_name: cb_openai_mini
+    score_path: results/scores/cb_openai_mini.csv
+  - exp_name: cb_openrouter_free
+    score_path: results/scores/cb_openrouter_free.csv
+  - exp_name: prompt_one_sentence_post
+    score_path: results/scores/prompt_one_sentence_post.csv
+  - exp_name: prompt_one_sentence_nopost
+    score_path: results/scores/prompt_one_sentence_nopost.csv
+  - exp_name: prompt_flashcard
+    score_path: results/scores/prompt_flashcard.csv
+  - exp_name: prompt_uncertainty
+    score_path: results/scores/prompt_uncertainty.csv
+  - exp_name: ft_1k
+    score_path: results/scores/ft_1k.csv
+  - exp_name: ft_5k
+    score_path: results/scores/ft_5k.csv
+  - exp_name: ft_20k
+    score_path: results/scores/ft_20k.csv
+  - exp_name: rag_wiki_k3
+    score_path: results/scores/rag_wiki_k3.csv
+  - exp_name: rag_wiki_k5
+    score_path: results/scores/rag_wiki_k5.csv

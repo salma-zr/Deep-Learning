@@ -1,0 +1,6 @@
+Use the context to answer the medical flashcard question.
+Context:
+{context}
+
+Question: {question}
+Answer in one sentence. If the context does not contain the answer, reply exactly: Insufficient information.
