@@ -1,0 +1,84 @@
+\\documentclass[11pt]{article}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{graphicx}
+\\usepackage{booktabs}
+\\usepackage{hyperref}
+\\usepackage{float}
+\\usepackage{longtable}
+\\usepackage{array}
+
+\\newcommand{\\safeincludegraphics}[2]{
+\\IfFileExists{#1}{\\includegraphics[width=#2]{#1}}{\\textit{Figure not generated yet.}}
+}
+
+\\title{Medical Question Answering: Closed-Book, Prompting, Fine-Tuning, and RAG}
+\\author{Student Project}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\begin{abstract}
+This project studies medical question answering on a flashcard style dataset using four strategies: closed-book generation, prompt engineering, LoRA fine-tuning, and retrieval augmented generation (RAG). The goal is not to maximize scores but to build a transparent and reproducible evaluation pipeline. We report ROUGE-L, BLEU, and a lightweight LLM-as-a-judge score, and we include qualitative analysis, latency, and estimated costs. All tables and figures are generated automatically from scripts; no results are manually edited.
+\\end{abstract}
+
+\\section{Introduction}
+Medical QA is a high-risk setting because errors can be harmful. This study is purely educational and does not provide medical advice. The objective is to compare strategies that trade off factuality, cost, and controllability. We focus on an end-to-end workflow that is easy to reproduce, with explicit seeds, logged parameters, and standard outputs.
+
+\\section{Dataset}
+We use the Hugging Face dataset \texttt{medalpaca/medical\\_meadow\\_medical\\_flashcards}. Each example is a question with a one-sentence answer. There is no official split, so we create an 80/10/10 train/dev/test split with a fixed seed (42). We also create a smaller \texttt{tiny\\_test} split of 200 examples for rapid iteration. The split files are saved to disk to ensure reproducibility.
+
+\\section{Methods}
+\\subsection{Closed-book baselines}
+Closed-book experiments query models without external context. We include a local model (Ollama), a low-cost cloud model (OpenAI mini), and a free OpenRouter model. This provides a baseline across deployment types and costs.
+
+\\subsection{Prompt engineering}
+We test three prompts: (i) strict one-sentence, (ii) flashcard style, and (iii) uncertainty allowed with a fixed fallback answer. We also compare a post-processing ablation that enforces one-sentence output versus leaving the model output unchanged.
+
+\\subsection{Fine-tuning}
+We prepare training data for LoRA or QLoRA fine-tuning on a small base model. We evaluate three training sizes (1k, 5k, 20k) to observe data scaling effects. The pipeline supports symbolic mode when no GPU is available, to preserve full reproducibility.
+
+\\subsection{RAG and retrieval ablations}
+RAG uses Wikipedia retrieval by default. We cache retrieval results and test an ablation on the number of chunks used in context (top\\_k = 3 vs 5). A web retrieval option exists but is disabled by default due to instability and potential content drift.
+
+\\subsection{LLM-as-a-judge}
+We use a lightweight judge model to rate semantic equivalence (0/1/2). To estimate judge stability, we optionally run a second pass on a small subset and compute disagreement rates.
+
+\\section{Experimental setup}
+All experiments run with seed 42. We evaluate on a capped test subset (default 500) to control costs. Each experiment is configured in a YAML file and produces standardized outputs: predictions, metrics, qualitative HTML, and LaTeX tables. We log model versions, prompts, and timings to ensure traceability.
+
+\\section{Metrics}
+We compute ROUGE-L and BLEU for lexical overlap, and a judge score for semantic equivalence. We also report format statistics: average length, multi-sentence rate, empty outputs, and the rate of the phrase ``Insufficient information''. Latency and cost estimates are logged for cloud calls when token usage is available.
+
+\\section{Results}
+Tables and figures are generated automatically from scripts and stored in \\texttt{results/}. If results are not generated yet, the table or figure will be missing.
+
+\\subsection{Main table}
+\\IfFileExists{results/report_assets/summary_table.tex}{\\input{results/report_assets/summary_table.tex}}{\\textit{Summary table not generated yet.}}
+
+\\subsection{Figures}
+\\begin{figure}[H]
+\\centering
+\\safeincludegraphics{results/figures/rougeL.png}{0.9\\textwidth}
+\\caption{ROUGE-L by experiment.}
+\\end{figure}
+
+\\begin{figure}[H]
+\\centering
+\\safeincludegraphics{results/figures/judge.png}{0.9\\textwidth}
+\\caption{Judge mean score by experiment.}
+\\end{figure}
+
+\\section{Qualitative analysis}
+We export a qualitative HTML report with best, worst, and controversial examples. These samples help explain where metrics align or disagree with human-like judgement. The analysis focuses on factuality, missing details, and hallucinations, not on medical advice.
+
+\\section{Discussion and limitations}
+There are important limitations. Lexical metrics (ROUGE/BLEU) are insensitive to correctness and can reward generic answers. The judge model can be inconsistent and biased by phrasing. RAG depends on retrieval quality and can include outdated information. Fine-tuning can overfit to dataset style and amplify systematic errors. Cost estimates depend on provider pricing and can drift over time. Finally, any model output can hallucinate, so this project must not be used for clinical decisions.
+
+\\section{Conclusion}
+This project provides a transparent workflow for evaluating medical QA strategies. The goal is a fair comparison and clear analysis rather than score optimization. The modular pipeline makes it easy to rerun experiments, add ablations, and update models while keeping evaluation consistent.
+
+\\section*{Appendix: Prompts and key parameters}
+The project includes versioned prompts for answer generation and judgement. Key parameters (seed, split sizes, model names, and retrieval settings) are logged for every run. See the repository for exact configurations.
+
+\\end{document}
