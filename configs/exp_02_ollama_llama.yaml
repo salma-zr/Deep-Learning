@@ -1,0 +1,39 @@
+# Experiment 02: Local Ollama Llama 3.1 8B
+# Closed-book generation with local model
+
+name: exp_02_ollama_llama
+
+# Strategy
+strategy: closed_book
+description: "Local inference with Llama 3.1 8B via Ollama"
+
+# Model configuration
+backend: ollama
+model: llama3.1:8b
+temperature: 0.0
+max_tokens: 256
+
+# Prompt
+prompt_id: one_sentence_strict
+system_prompt: "You are a helpful medical assistant. Answer questions concisely in one sentence."
+
+# Evaluation settings
+split: test
+limit: null  # No cost limit for local
+
+# Expected behavior
+objective: "Evaluate local model performance vs cloud API"
+expected_cost_usd: 0.0  # Free (local)
+
+# Requirements
+requirements: |
+  - Ollama installed and running
+  - Model pulled: ollama pull llama3.1:8b
+  - ~8GB VRAM or ~16GB RAM
+
+# Notes
+notes: |
+  - Free inference (no API costs)
+  - Privacy-preserving (data stays local)
+  - May be slower than cloud APIs
+  - Quality depends on local hardware

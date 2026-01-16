@@ -1,0 +1,49 @@
+# Experiment 09: Fine-tuning with 5k examples
+# LoRA fine-tuning ablation - medium data
+
+name: exp_09_finetune_5k
+
+# Strategy
+strategy: finetune
+description: "QLoRA fine-tuning with 5,000 training examples"
+
+# Model configuration
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+backend: huggingface
+
+# Fine-tuning configuration
+use_lora: true
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+load_in_4bit: true
+
+# Training
+train_size: 5000
+num_epochs: 3
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 0.0002
+
+# Output
+output_dir: models/finetune_5k
+
+# Evaluation
+prompt_id: flashcard_style
+split: test
+limit: 500
+
+# Expected behavior
+objective: "Test scaling effect of training data"
+expected_cost_usd: 0.0
+
+# Ablation info
+ablation_of: exp_08_finetune_1k
+ablation_variable: train_size
+ablation_values: [1000, 5000, 20000]
+
+# Notes
+notes: |
+  - 5x more training data than exp_08
+  - Should show improvement if data scales
+  - Watch for overfitting signs

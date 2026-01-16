@@ -1,0 +1,33 @@
+# Experiment 03: OpenRouter Free Tier
+# Closed-book with free API model
+
+name: exp_03_openrouter_free
+
+# Strategy
+strategy: closed_book
+description: "Free tier model via OpenRouter API"
+
+# Model configuration
+backend: openrouter
+model: mistralai/mistral-7b-instruct:free
+temperature: 0.0
+max_tokens: 256
+
+# Prompt
+prompt_id: one_sentence_strict
+system_prompt: "You are a helpful medical assistant. Answer questions concisely in one sentence."
+
+# Evaluation settings
+split: test
+limit: 500
+
+# Expected behavior
+objective: "Compare free API option to paid alternatives"
+expected_cost_usd: 0.0  # Free tier
+
+# Notes
+notes: |
+  - Free API access (may have rate limits)
+  - Good for budget-constrained experiments
+  - Performance may vary from paid models
+  - Requires OPENROUTER_API_KEY (free to obtain)

@@ -1,0 +1,44 @@
+# Experiment 10: Fine-tuning with 20k examples
+# LoRA fine-tuning ablation - large data
+
+name: exp_10_finetune_20k
+
+# Strategy
+strategy: finetune
+description: "QLoRA fine-tuning with 20,000 training examples"
+
+# Model configuration
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+backend: huggingface
+
+# Fine-tuning configuration
+use_lora: true
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+load_in_4bit: true
+
+# Training
+train_size: 20000
+num_epochs: 2  # Fewer epochs with more data
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 0.0001  # Slightly lower LR
+
+# Output
+output_dir: models/finetune_20k
+
+# Evaluation
+prompt_id: flashcard_style
+split: test
+limit: 500
+
+# Expected behavior
+objective: "Test with majority of training data"
+expected_cost_usd: 0.0
+
+# Notes
+notes: |
+  - Largest fine-tuning experiment
+  - Uses most of available training data
+  - May need longer Colab session
