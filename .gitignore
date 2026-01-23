@@ -65,6 +65,7 @@ results/preds/*.jsonl
 results/scores/*.csv
 results/qualitative/*.html
 results/figures/*.png
+results/report_assets/*.tex
 
 # Report build artifacts
 report/*.aux
@@ -81,6 +82,7 @@ report/*.fls
 !report/report.tex
 !report/tables/
 !report/figures/
+!results/report_assets/
 
 # Environment variables
 .env

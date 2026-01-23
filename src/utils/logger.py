@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import platform
+from importlib import metadata
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -92,6 +94,24 @@ def log_experiment_start(
     logger.info("Configuration:")
     for key, value in config.items():
         logger.info(f"  {key}: {value}")
+    logger.info("-" * 60)
+    logger.info("Environment:")
+    logger.info(f"  python: {sys.version.split()[0]}")
+    logger.info(f"  platform: {platform.platform()}")
+    for pkg in [
+        "datasets",
+        "transformers",
+        "openai",
+        "ollama",
+        "sacrebleu",
+        "rouge-score",
+        "sentence-transformers",
+    ]:
+        try:
+            version = metadata.version(pkg)
+            logger.info(f"  {pkg}: {version}")
+        except metadata.PackageNotFoundError:
+            logger.info(f"  {pkg}: not installed")
     logger.info("=" * 60)
 
 

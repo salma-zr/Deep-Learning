@@ -4,9 +4,14 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
-from src.report.tables import generate_results_table, generate_ablation_table
+from src.report.tables import (
+    generate_results_table,
+    generate_ablation_table,
+    generate_prompt_comparison_table,
+    generate_splits_table,
+    generate_cost_table,
+)
 from src.report.figures import generate_all_figures
 from src.utils.io_utils import ensure_dir, get_project_root
 from src.utils.logger import get_logger
@@ -38,15 +43,18 @@ def build_report(
     
     # Generate tables
     logger.info("Generating tables...")
-    tables_dir = output_dir / "tables"
-    ensure_dir(tables_dir)
+    assets_dir = get_project_root() / "results" / "report_assets"
+    ensure_dir(assets_dir)
     
-    generate_results_table(output_file=tables_dir / "main_results.tex")
-    generate_ablation_table(output_file=tables_dir / "ablation.tex")
+    generate_results_table(output_file=assets_dir / "main_results.tex")
+    generate_ablation_table(output_file=assets_dir / "ablation.tex")
+    generate_prompt_comparison_table(output_file=assets_dir / "prompts.tex")
+    generate_splits_table(output_file=assets_dir / "splits.tex")
+    generate_cost_table(output_file=assets_dir / "costs.tex")
     
     # Generate figures
     logger.info("Generating figures...")
-    figures_dir = output_dir / "figures"
+    figures_dir = get_project_root() / "results" / "figures"
     ensure_dir(figures_dir)
     
     generate_all_figures(output_dir=figures_dir)

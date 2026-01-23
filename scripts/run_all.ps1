@@ -7,12 +7,14 @@
 #   .\scripts\run_all.ps1              # Run everything
 #   .\scripts\run_all.ps1 -Quick       # Quick test with tiny_test split
 #   .\scripts\run_all.ps1 -SkipApi     # Skip experiments requiring API keys
+#   .\scripts\run_all.ps1 -WithWebRag  # Include web RAG (DuckDuckGo)
 # =============================================================================
 
 param(
     [switch]$Quick,
     [switch]$SkipApi,
-    [switch]$WithFinetune
+    [switch]$WithFinetune,
+    [switch]$WithWebRag
 )
 
 $ErrorActionPreference = "Continue"
@@ -36,6 +38,7 @@ Write-Host "  Split: $Split"
 Write-Host "  Quick mode: $Quick"
 Write-Host "  Skip API: $SkipApi"
 Write-Host "  With fine-tuning: $WithFinetune"
+Write-Host "  Web RAG enabled: $WithWebRag"
 Write-Host ""
 
 # =============================================================================
@@ -86,12 +89,24 @@ function Run-RagExperiment {
 if (-not $SkipApi) {
     Write-Host "Running OpenAI experiments..."
     Run-GenExperiment "configs/exp_01_openai_baseline.yaml"
+    Run-GenExperiment "configs/exp_12_postprocess_enforced.yaml"
     Run-GenExperiment "configs/exp_04_prompt_flashcard.yaml"
     Run-GenExperiment "configs/exp_05_prompt_uncertainty.yaml"
     
+    if ($env:OPENROUTER_API_KEY) {
+        Write-Host "Running OpenRouter free-tier experiment..."
+        Run-GenExperiment "configs/exp_03_openrouter_free.yaml"
+    } else {
+        Write-Host "OPENROUTER_API_KEY not set, skipping OpenRouter experiment" -ForegroundColor Yellow
+    }
+
     Write-Host "Running RAG experiments..."
     Run-RagExperiment "configs/exp_06_rag_wikipedia.yaml"
     Run-RagExperiment "configs/exp_07_rag_topk_ablation.yaml"
+
+    if ($WithWebRag) {
+        Run-RagExperiment "configs/exp_13_rag_web.yaml"
+    }
 }
 
 # Check for Ollama
@@ -126,10 +141,11 @@ if (-not $WithFinetune) {
     Write-Host "Skipping fine-tuning (use -WithFinetune to enable)" -ForegroundColor Yellow
     Write-Host "Running symbolic fine-tune for pipeline testing..."
     python -m src.finetune.cli train configs/exp_08_finetune_1k.yaml --symbolic
+    python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml --symbolic
+    python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml --symbolic
 } else {
     Write-Host "Preparing fine-tuning data..."
-    python -m src.finetune.cli prepare --max 1000 --style alpaca
-    python -m src.finetune.cli prepare --max 5000 --style alpaca
+    python -m src.finetune.cli prepare_ablation --sizes 1000,5000,20000 --style alpaca
     
     Write-Host "Note: Fine-tuning requires GPU. Use Google Colab if not available locally." -ForegroundColor Yellow
     
@@ -138,6 +154,20 @@ if (-not $WithFinetune) {
     } catch {
         Write-Host "Fine-tuning failed, running symbolic mode..." -ForegroundColor Yellow
         python -m src.finetune.cli train configs/exp_08_finetune_1k.yaml --symbolic
+    }
+
+    try {
+        python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml
+    } catch {
+        Write-Host "Fine-tuning failed, running symbolic mode..." -ForegroundColor Yellow
+        python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml --symbolic
+    }
+
+    try {
+        python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml
+    } catch {
+        Write-Host "Fine-tuning failed, running symbolic mode..." -ForegroundColor Yellow
+        python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml --symbolic
     }
 }
 
@@ -175,6 +205,13 @@ if (Test-Path $PredDir) {
     }
 } else {
     Write-Host "No predictions found in $PredDir" -ForegroundColor Yellow
+}
+
+# Optional: judge consistency check on baseline if available
+$BaselineJudged = "results/preds/exp_01_openai_baseline_judged.jsonl"
+if (-not $SkipApi -and (Test-Path $BaselineJudged)) {
+    Write-Host "Running judge consistency check (baseline)..."
+    python -m src.eval.cli verify-consistency $BaselineJudged --samples 50 --output "results/scores/exp_01_openai_baseline_judge_consistency.json"
 }
 
 Write-Host ""
@@ -221,6 +258,7 @@ Write-Host "  - Predictions: results/preds/"
 Write-Host "  - Scores: results/scores/"
 Write-Host "  - Qualitative: results/qualitative/"
 Write-Host "  - Figures: results/figures/"
+Write-Host "  - Report assets: results/report_assets/"
 Write-Host "  - Report: report/report.tex"
 Write-Host ""
 Write-Host "Done!" -ForegroundColor Blue

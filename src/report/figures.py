@@ -99,6 +99,58 @@ def plot_metrics_comparison(
     return str(output_file)
 
 
+def plot_latency_comparison(
+    scores_dir: Optional[str | Path] = None,
+    output_file: Optional[str | Path] = None,
+) -> str:
+    """
+    Create a bar chart comparing average latency across experiments.
+    """
+    if scores_dir is None:
+        scores_dir = get_project_root() / "results" / "scores"
+
+    if output_file is None:
+        output_file = get_project_root() / "results" / "figures" / "latency_comparison.png"
+
+    scores_dir = Path(scores_dir)
+    output_file = Path(output_file)
+    ensure_dir(output_file)
+
+    all_results = []
+    for csv_file in scores_dir.glob("*.csv"):
+        try:
+            df = pd.read_csv(csv_file)
+            if len(df) > 0:
+                row = df.iloc[0].to_dict()
+                row["experiment"] = csv_file.stem
+                all_results.append(row)
+        except Exception:
+            pass
+
+    if not all_results:
+        _create_placeholder_figure(output_file, "No latency data available")
+        return str(output_file)
+
+    results_df = pd.DataFrame(all_results)
+    if "latency_mean_ms" not in results_df.columns:
+        _create_placeholder_figure(output_file, "Latency metric not available")
+        return str(output_file)
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.bar(results_df["experiment"], results_df["latency_mean_ms"].fillna(0))
+    ax.set_xlabel("Experiment")
+    ax.set_ylabel("Mean Latency (ms)")
+    ax.set_title("Average Latency per Experiment")
+    ax.tick_params(axis="x", rotation=45)
+
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150, bbox_inches='tight')
+    plt.close()
+
+    logger.info(f"Latency comparison plot saved to {output_file}")
+    return str(output_file)
+
+
 def plot_ablation_curve(
     scores_dir: Optional[str | Path] = None,
     output_file: Optional[str | Path] = None,
@@ -361,6 +413,13 @@ def generate_all_figures(
         figures.append(fig)
     except Exception as e:
         logger.warning(f"Failed to create ablation curve: {e}")
+
+    # Latency comparison
+    try:
+        fig = plot_latency_comparison(scores_dir, output_dir / "latency_comparison.png")
+        figures.append(fig)
+    except Exception as e:
+        logger.warning(f"Failed to create latency comparison: {e}")
     
     return figures
 

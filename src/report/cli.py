@@ -6,8 +6,14 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-from src.report.tables import generate_results_table, generate_ablation_table
-from src.report.figures import generate_all_figures, plot_metrics_comparison
+from src.report.tables import (
+    generate_results_table,
+    generate_ablation_table,
+    generate_prompt_comparison_table,
+    generate_splits_table,
+    generate_cost_table,
+)
+from src.report.figures import generate_all_figures
 from src.report.latex import build_report, compile_latex
 from src.utils.io_utils import get_project_root
 
@@ -23,17 +29,29 @@ def tables(
     console.print("[bold blue]Generating LaTeX tables...[/bold blue]")
     
     if output_dir is None:
-        output_dir = get_project_root() / "report" / "tables"
+        output_dir = get_project_root() / "results" / "report_assets"
     
     output_dir = Path(output_dir)
     
     # Main results table
-    main_table = generate_results_table(output_file=output_dir / "main_results.tex")
+    generate_results_table(output_file=output_dir / "main_results.tex")
     console.print(f"Main results table: {output_dir / 'main_results.tex'}")
     
     # Ablation table
-    ablation_table = generate_ablation_table(output_file=output_dir / "ablation.tex")
+    generate_ablation_table(output_file=output_dir / "ablation.tex")
     console.print(f"Ablation table: {output_dir / 'ablation.tex'}")
+
+    # Prompt comparison table
+    generate_prompt_comparison_table(output_file=output_dir / "prompts.tex")
+    console.print(f"Prompt comparison table: {output_dir / 'prompts.tex'}")
+
+    # Splits table (from metadata)
+    generate_splits_table(output_file=output_dir / "splits.tex")
+    console.print(f"Splits table: {output_dir / 'splits.tex'}")
+
+    # Cost table
+    generate_cost_table(output_file=output_dir / "costs.tex")
+    console.print(f"Cost table: {output_dir / 'costs.tex'}")
     
     console.print("[green]Tables generated successfully![/green]")
 
@@ -46,7 +64,7 @@ def figures(
     console.print("[bold blue]Generating figures...[/bold blue]")
     
     if output_dir is None:
-        output_dir = get_project_root() / "report" / "figures"
+        output_dir = get_project_root() / "results" / "figures"
     
     figures = generate_all_figures(output_dir=output_dir)
     

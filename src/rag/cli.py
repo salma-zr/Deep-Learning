@@ -21,7 +21,7 @@ console = Console()
 @app.command()
 def run(
     config_path: str = typer.Argument(..., help="Path to experiment config YAML"),
-    split: str = typer.Option("tiny_test", "--split", "-s", help="Split to use"),
+    split: Optional[str] = typer.Option(None, "--split", "-s", help="Split to use"),
     limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Limit examples"),
     output_dir: str = typer.Option(None, "--output", "-o", help="Output directory"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
@@ -30,6 +30,8 @@ def run(
     # Load config
     config = load_yaml(config_path)
     exp_name = config.get("name", Path(config_path).stem)
+    split = split or config.get("split", "tiny_test")
+    limit = limit if limit is not None else config.get("limit")
     
     # Setup logging
     logger = setup_logger(

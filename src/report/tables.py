@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 import pandas as pd
 
-from src.utils.io_utils import ensure_dir, get_project_root
+from src.utils.io_utils import ensure_dir, get_project_root, load_yaml
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -70,6 +70,9 @@ def generate_results_table(
         ("judge_mean", "Judge"),
         ("judge_correct_pct", "Correct \\%"),
         ("latency_mean_ms", "Latency (ms)"),
+        ("latency_p95_ms", "Latency p95 (ms)"),
+        ("cost_total_usd", "Cost (USD)"),
+        ("cost_per_example_usd", "Cost/ex (USD)"),
         ("n_examples", "N"),
     ]
     
@@ -289,3 +292,99 @@ Experiment & Metrics \\\\
 \\bottomrule
 \\end{tabular}
 \\end{table}"""
+
+
+def generate_splits_table(
+    splits_metadata: Optional[str | Path] = None,
+    output_file: Optional[str | Path] = None,
+) -> str:
+    """Generate a LaTeX table for dataset splits."""
+    if splits_metadata is None:
+        splits_metadata = get_project_root() / "data" / "splits" / "metadata.yaml"
+
+    metadata_path = Path(splits_metadata)
+    if not metadata_path.exists():
+        return _empty_table()
+
+    metadata = load_yaml(metadata_path)
+    split_sizes = metadata.get("split_sizes", {})
+
+    latex_lines = [
+        "\\begin{table}[htbp]",
+        "\\centering",
+        "\\caption{Dataset splits and sizes}",
+        "\\label{tab:splits}",
+        "\\begin{tabular}{lr}",
+        "\\toprule",
+        "Split & Examples \\\\",
+        "\\midrule",
+    ]
+
+    for split_name in ["train", "dev", "test", "tiny_test"]:
+        if split_name in split_sizes:
+            latex_lines.append(f"{split_name} & {split_sizes[split_name]} \\\\")
+
+    latex_lines.extend([
+        "\\bottomrule",
+        "\\end{tabular}",
+        "\\end{table}",
+    ])
+
+    latex = "\n".join(latex_lines)
+
+    if output_file:
+        output_file = Path(output_file)
+        ensure_dir(output_file)
+        output_file.write_text(latex, encoding="utf-8")
+
+    return latex
+
+
+def generate_cost_table(
+    scores_dir: Optional[str | Path] = None,
+    output_file: Optional[str | Path] = None,
+) -> str:
+    """Generate a LaTeX table summarizing cost estimates."""
+    if scores_dir is None:
+        scores_dir = get_project_root() / "results" / "scores"
+
+    scores_dir = Path(scores_dir)
+    all_results = []
+
+    for csv_file in scores_dir.glob("*.csv"):
+        try:
+            df = pd.read_csv(csv_file)
+            if len(df) > 0:
+                row = df.iloc[0].to_dict()
+                row["experiment"] = csv_file.stem
+                all_results.append(row)
+        except Exception as e:
+            logger.warning(f"Failed to load {csv_file}: {e}")
+
+    if not all_results:
+        return _empty_table()
+
+    results_df = pd.DataFrame(all_results)
+
+    columns = [
+        ("experiment", "Experiment"),
+        ("cost_total_usd", "Total Cost (USD)"),
+        ("cost_per_example_usd", "Cost/ex (USD)"),
+        ("n_examples", "N"),
+    ]
+
+    available_cols = [(col, name) for col, name in columns if col in results_df.columns]
+
+    latex = _build_latex_table(
+        df=results_df,
+        columns=available_cols,
+        caption="Estimated API Costs by Experiment",
+        label="tab:costs",
+    )
+
+    if output_file:
+        output_file = Path(output_file)
+        ensure_dir(output_file)
+        output_file.write_text(latex, encoding="utf-8")
+
+    return latex

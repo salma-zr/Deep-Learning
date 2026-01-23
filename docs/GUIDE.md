@@ -43,6 +43,11 @@ Question → LLM → Réponse
    If uncertain, say "Insufficient information."
    ```
 
+4. **Post-traitement (ablation)**: Forcer 1 phrase après génération
+   ```
+   Extraire la première phrase, retirer le markdown
+   ```
+
 **Impact attendu**:
 - Format: Meilleur respect du format single-sentence
 - Confiance: Moins d'hallucinations avec uncertainty allowed
@@ -146,6 +151,10 @@ F1 = 2 * (Precision * Recall) / (Precision + Recall)
 - Coût API
 - Biais du modèle juge
 - Instabilité (vérifier avec double-judge)
+
+**Vérification de stabilité**:
+- Re-juger un sous-ensemble (ex: 50 exemples)
+- Mesurer le taux de désaccord
 
 ### 2.4 Pourquoi combiner les métriques?
 

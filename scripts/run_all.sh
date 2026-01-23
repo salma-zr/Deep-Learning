@@ -12,6 +12,7 @@
 #   ./scripts/run_all.sh              # Run everything
 #   ./scripts/run_all.sh --quick      # Quick test with tiny_test split
 #   ./scripts/run_all.sh --skip-api   # Skip experiments requiring API keys
+#   ./scripts/run_all.sh --with-web-rag  # Include web RAG (DuckDuckGo)
 #
 # Prerequisites:
 #   - Python 3.11+ with dependencies installed
@@ -32,6 +33,7 @@ NC='\033[0m' # No Color
 QUICK_MODE=false
 SKIP_API=false
 SKIP_FINETUNE=true  # Default skip fine-tuning (needs GPU)
+WITH_WEB_RAG=false
 
 for arg in "$@"; do
     case $arg in
@@ -45,6 +47,10 @@ for arg in "$@"; do
             ;;
         --with-finetune)
             SKIP_FINETUNE=false
+            shift
+            ;;
+        --with-web-rag)
+            WITH_WEB_RAG=true
             shift
             ;;
         *)
@@ -71,6 +77,7 @@ echo "  Split: $SPLIT"
 echo "  Quick mode: $QUICK_MODE"
 echo "  Skip API: $SKIP_API"
 echo "  Skip fine-tuning: $SKIP_FINETUNE"
+echo "  Web RAG enabled: $WITH_WEB_RAG"
 echo ""
 
 # =============================================================================
@@ -120,12 +127,24 @@ run_rag_experiment() {
 if [ "$SKIP_API" = false ]; then
     echo "Running OpenAI experiments..."
     run_gen_experiment configs/exp_01_openai_baseline.yaml
+    run_gen_experiment configs/exp_12_postprocess_enforced.yaml
     run_gen_experiment configs/exp_04_prompt_flashcard.yaml
     run_gen_experiment configs/exp_05_prompt_uncertainty.yaml
     
+    if [ -n "$OPENROUTER_API_KEY" ]; then
+        echo "Running OpenRouter free-tier experiment..."
+        run_gen_experiment configs/exp_03_openrouter_free.yaml
+    else
+        echo -e "${YELLOW}OPENROUTER_API_KEY not set, skipping OpenRouter experiment${NC}"
+    fi
+
     echo "Running RAG experiments..."
     run_rag_experiment configs/exp_06_rag_wikipedia.yaml
     run_rag_experiment configs/exp_07_rag_topk_ablation.yaml
+
+    if [ "$WITH_WEB_RAG" = true ]; then
+        run_rag_experiment configs/exp_13_rag_web.yaml
+    fi
 fi
 
 # Local model experiments (Ollama)
@@ -152,11 +171,11 @@ if [ "$SKIP_FINETUNE" = true ]; then
     echo -e "${YELLOW}Skipping fine-tuning (use --with-finetune to enable)${NC}"
     echo "Running symbolic fine-tune for pipeline testing..."
     python -m src.finetune.cli train configs/exp_08_finetune_1k.yaml --symbolic
+    python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml --symbolic
+    python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml --symbolic
 else
     echo "Preparing fine-tuning data..."
-    python -m src.finetune.cli prepare --max 1000 --style alpaca
-    python -m src.finetune.cli prepare --max 5000 --style alpaca
-    python -m src.finetune.cli prepare --max 20000 --style alpaca
+    python -m src.finetune.cli prepare_ablation --sizes 1000,5000,20000 --style alpaca
     
     echo "Running fine-tuning experiments..."
     echo -e "${YELLOW}Note: This requires GPU. Use Google Colab if not available locally.${NC}"
@@ -164,6 +183,14 @@ else
     python -m src.finetune.cli train configs/exp_08_finetune_1k.yaml || {
         echo -e "${YELLOW}Fine-tuning failed, running symbolic mode...${NC}"
         python -m src.finetune.cli train configs/exp_08_finetune_1k.yaml --symbolic
+    }
+    python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml || {
+        echo -e "${YELLOW}Fine-tuning failed, running symbolic mode...${NC}"
+        python -m src.finetune.cli train configs/exp_09_finetune_5k.yaml --symbolic
+    }
+    python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml || {
+        echo -e "${YELLOW}Fine-tuning failed, running symbolic mode...${NC}"
+        python -m src.finetune.cli train configs/exp_10_finetune_20k.yaml --symbolic
     }
 fi
 
@@ -202,6 +229,15 @@ if [ -d "$PRED_DIR" ]; then
     done
 else
     echo -e "${YELLOW}No predictions found in $PRED_DIR${NC}"
+fi
+
+# Optional: judge consistency check on baseline if available
+BASELINE_JUDGED="results/preds/exp_01_openai_baseline_judged.jsonl"
+if [ "$SKIP_API" = false ] && [ -f "$BASELINE_JUDGED" ]; then
+    echo "Running judge consistency check (baseline)..."
+    python -m src.eval.cli verify-consistency "$BASELINE_JUDGED" --samples 50 --output "results/scores/exp_01_openai_baseline_judge_consistency.json" || {
+        echo -e "${YELLOW}Consistency check failed, continuing...${NC}"
+    }
 fi
 
 echo ""
@@ -245,6 +281,7 @@ echo "  - Predictions: results/preds/"
 echo "  - Scores: results/scores/"
 echo "  - Qualitative: results/qualitative/"
 echo "  - Figures: results/figures/"
+echo "  - Report assets: results/report_assets/"
 echo "  - Report: report/report.tex"
 echo ""
 

@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.table import Table
 import pandas as pd
 
-from src.eval.metrics import compute_all_metrics, metrics_to_csv_row
+from src.eval.metrics import compute_all_metrics, metrics_to_csv_row, annotate_with_rouge
 from src.eval.judge import LLMJudge, judge_predictions, verify_judge_consistency
 from src.eval.qualitative import generate_qualitative_report
 from src.utils.io_utils import load_jsonl, save_jsonl, ensure_dir, get_project_root
@@ -34,6 +34,8 @@ def metrics(
     refs = [p["reference"] for p in predictions]
     latencies = [p.get("meta", {}).get("latency_ms") for p in predictions]
     latencies = [l for l in latencies if l is not None]
+    costs = [p.get("meta", {}).get("cost_estimate") for p in predictions]
+    costs = [c for c in costs if c is not None]
     
     # Check for judge scores
     judge_scores = [p.get("judge_score") for p in predictions]
@@ -45,6 +47,7 @@ def metrics(
         references=refs,
         latencies_ms=latencies if latencies else None,
         judge_scores=judge_scores,
+        cost_estimates=costs if costs else None,
     )
     
     # Display
@@ -115,6 +118,7 @@ def verify_consistency(
     predictions_file: str = typer.Argument(..., help="Path to judged predictions"),
     n_samples: int = typer.Option(50, "--samples", "-n", help="Number of samples to verify"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="Judge model"),
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output JSON file"),
 ):
     """Verify judge consistency by re-judging samples."""
     console.print(f"[bold blue]Verifying judge consistency...[/bold blue]")
@@ -143,6 +147,11 @@ def verify_consistency(
     table.add_row("Consistency rate", f"{stats['consistency_rate']:.1%}")
     
     console.print(table)
+
+    if output_file:
+        from src.utils.io_utils import save_json
+        save_json(stats, output_file)
+        console.print(f"[green]Consistency stats saved to {output_file}[/green]")
 
 
 @app.command()
@@ -182,12 +191,22 @@ def full(
     
     preds = [p["prediction"] for p in predictions]
     refs = [p["reference"] for p in predictions]
-    latencies = [p.get("meta", {}).get("latency_ms") for p in predictions if p.get("meta", {}).get("latency_ms")]
+    latencies = [
+        p.get("meta", {}).get("latency_ms")
+        for p in predictions
+        if p.get("meta", {}).get("latency_ms")
+    ]
+    costs = [
+        p.get("meta", {}).get("cost_estimate")
+        for p in predictions
+        if p.get("meta", {}).get("cost_estimate") is not None
+    ]
     
     all_metrics = compute_all_metrics(
         predictions=preds,
         references=refs,
         latencies_ms=latencies if latencies else None,
+        cost_estimates=costs if costs else None,
     )
     
     # 2. Run judge (unless skipped)
@@ -209,6 +228,11 @@ def full(
         all_metrics["judge_correct_pct"] = judge_stats["correct_pct"]
         all_metrics["judge_partial_pct"] = judge_stats["partial_pct"]
         all_metrics["judge_wrong_pct"] = judge_stats["wrong_pct"]
+
+        # Annotate judged predictions with per-example ROUGE
+        judged_predictions = load_jsonl(judged_file)
+        judged_predictions = annotate_with_rouge(judged_predictions)
+        save_jsonl(judged_predictions, judged_file)
     
     # 3. Save metrics CSV
     console.print("\n[bold]Step 3: Saving metrics...[/bold]")

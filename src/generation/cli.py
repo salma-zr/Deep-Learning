@@ -1,6 +1,5 @@
 """CLI for generation experiments."""
 
-import json
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +13,7 @@ from src.data.split import load_split
 from src.utils.io_utils import save_jsonl, load_yaml, ensure_dir, get_project_root
 from src.utils.logger import setup_logger, log_experiment_start, log_experiment_end
 from src.utils.timer import Timer
+from src.utils.normalize import normalize_answer
 
 app = typer.Typer(help="Generation experiment commands")
 console = Console()
@@ -73,7 +73,7 @@ def get_generator(config: dict):
 @app.command()
 def run(
     config_path: str = typer.Argument(..., help="Path to experiment config YAML"),
-    split: str = typer.Option("tiny_test", "--split", "-s", help="Split to use"),
+    split: Optional[str] = typer.Option(None, "--split", "-s", help="Split to use"),
     limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Limit examples"),
     output_dir: str = typer.Option(None, "--output", "-o", help="Output directory"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
@@ -82,6 +82,9 @@ def run(
     # Load config
     config = load_yaml(config_path)
     exp_name = config.get("name", Path(config_path).stem)
+    split = split or config.get("split", "tiny_test")
+    limit = limit if limit is not None else config.get("limit")
+    postprocess_single_sentence = bool(config.get("postprocess_single_sentence", False))
     
     # Setup logging
     logger = setup_logger(
@@ -100,7 +103,7 @@ def run(
     # Get prompt manager
     pm = get_prompt_manager()
     prompt_id = config.get("prompt_id", "one_sentence_strict")
-    prompt_template = pm.get_prompt_template(prompt_id)
+    pm.get_prompt_template(prompt_id)
     
     # Create generator
     console.print(f"[bold blue]Initializing generator ({config.get('backend')}/{config.get('model')})...[/bold blue]")
@@ -127,25 +130,40 @@ def run(
             
             # Generate
             result = generator.generate(prompt)
+            prediction = result.prediction
+            raw_prediction = prediction
+
+            if postprocess_single_sentence:
+                prediction = normalize_answer(
+                    prediction,
+                    lowercase=False,
+                    remove_punct=False,
+                    single_sentence=True,
+                    remove_md=True,
+                )
             
             # Build output record
             record = {
                 "id": example["id"],
                 "question": example["question"],
                 "reference": example["answer"],
-                "prediction": result.prediction,
+                "prediction": prediction,
                 "meta": {
                     "model": result.model,
                     "prompt_id": result.prompt_id,
                     "latency_ms": result.latency_ms,
                     "token_usage": result.token_usage,
                     "cost_estimate": result.cost_estimate,
+                    "retrieval_info": None,
                 },
             }
             
             if result.error:
                 record["meta"]["error"] = result.error
                 errors += 1
+            if postprocess_single_sentence:
+                record["meta"]["postprocess_single_sentence"] = True
+                record["meta"]["raw_prediction"] = raw_prediction
             
             results.append(record)
             total_latency += result.latency_ms

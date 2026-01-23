@@ -57,6 +57,56 @@ def compute_rouge(
     }
 
 
+def compute_per_example_rouge(
+    predictions: list[str],
+    references: list[str],
+) -> list[dict[str, float]]:
+    """
+    Compute per-example ROUGE scores.
+
+    Returns a list of dicts with rouge1/rouge2/rougeL for each example.
+    """
+    try:
+        from rouge_score import rouge_scorer
+    except ImportError:
+        logger.error("rouge-score not installed. Install with: pip install rouge-score")
+        return [{"rouge1": 0.0, "rouge2": 0.0, "rougeL": 0.0} for _ in predictions]
+
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+    per_example = []
+
+    for pred, ref in zip(predictions, references):
+        if not pred or not pred.strip():
+            pred = "no answer"
+        if not ref or not ref.strip():
+            ref = "no answer"
+
+        result = scorer.score(ref, pred)
+        per_example.append({
+            "rouge1": result["rouge1"].fmeasure,
+            "rouge2": result["rouge2"].fmeasure,
+            "rougeL": result["rougeL"].fmeasure,
+        })
+
+    return per_example
+
+
+def annotate_with_rouge(
+    predictions: list[dict],
+) -> list[dict]:
+    """Annotate prediction records with per-example ROUGE scores."""
+    preds = [p.get("prediction", "") for p in predictions]
+    refs = [p.get("reference", "") for p in predictions]
+    per_example = compute_per_example_rouge(preds, refs)
+
+    for record, scores in zip(predictions, per_example):
+        record["rouge_1"] = scores["rouge1"]
+        record["rouge_2"] = scores["rouge2"]
+        record["rouge_l"] = scores["rougeL"]
+
+    return predictions
+
+
 def compute_bleu(
     predictions: list[str],
     references: list[str],
@@ -180,6 +230,7 @@ def compute_all_metrics(
     references: list[str],
     latencies_ms: Optional[list[float]] = None,
     judge_scores: Optional[list[int]] = None,
+    cost_estimates: Optional[list[float]] = None,
 ) -> dict[str, float]:
     """
     Compute all evaluation metrics.
@@ -217,9 +268,16 @@ def compute_all_metrics(
         valid_scores = [s for s in judge_scores if s is not None]
         if valid_scores:
             metrics["judge_mean"] = statistics.mean(valid_scores)
-            metrics["judge_perfect_pct"] = (valid_scores.count(2) / len(valid_scores)) * 100
+            metrics["judge_correct_pct"] = (valid_scores.count(2) / len(valid_scores)) * 100
             metrics["judge_partial_pct"] = (valid_scores.count(1) / len(valid_scores)) * 100
             metrics["judge_wrong_pct"] = (valid_scores.count(0) / len(valid_scores)) * 100
+
+    # Cost estimates
+    if cost_estimates:
+        valid_costs = [c for c in cost_estimates if c is not None]
+        if valid_costs:
+            metrics["cost_total_usd"] = sum(valid_costs)
+            metrics["cost_per_example_usd"] = sum(valid_costs) / len(valid_costs)
     
     # Add count
     metrics["n_examples"] = len(predictions)

@@ -17,6 +17,9 @@ export OPENAI_API_KEY="your-key-here"
 # 3. Run the full pipeline (quick test mode)
 ./scripts/run_all.sh --quick
 
+# Optional: enable web RAG (DuckDuckGo)
+./scripts/run_all.sh --quick --with-web-rag
+
 # 4. Generate report
 python -m src.report.cli build
 ```
@@ -52,7 +55,8 @@ medical-qa-project/
 │   ├── preds/                  # Predictions (JSONL)
 │   ├── scores/                 # Evaluation metrics (CSV)
 │   ├── qualitative/            # HTML analysis reports
-│   └── figures/                # Generated plots
+│   ├── figures/                # Generated plots
+│   └── report_assets/          # Auto-generated LaTeX tables
 ├── report/                     # LaTeX report
 │   ├── report.tex              # Main document
 │   ├── tables/                 # Auto-generated tables
@@ -194,6 +198,9 @@ python -m src.eval.cli metrics results/preds/exp_01_openai_baseline.jsonl
 # Run LLM judge
 python -m src.eval.cli judge results/preds/exp_01_openai_baseline.jsonl
 
+# Verify judge consistency (double pass on subset)
+python -m src.eval.cli verify-consistency results/preds/exp_01_openai_baseline_judged.jsonl --samples 50
+
 # Full evaluation (metrics + judge + qualitative)
 python -m src.eval.cli full results/preds/exp_01_openai_baseline.jsonl
 
@@ -208,8 +215,13 @@ python -m src.eval.cli qualitative results/preds/exp_01_openai_baseline_judged.j
 python -m src.report.cli tables
 python -m src.report.cli figures
 
+# Tables saved to results/report_assets/, figures to results/figures/
+
 # Build complete report
 python -m src.report.cli build
+
+# Or using the helper script
+python report/build_report.py --no-compile
 
 # Compile PDF (requires LaTeX)
 python -m src.report.cli compile report/report.tex
@@ -227,8 +239,16 @@ python -m src.report.cli compile report/report.tex
 # Skip API experiments (local only)
 ./scripts/run_all.sh --skip-api
 
+# Optional: include web RAG
+./scripts/run_all.sh --with-web-rag
+
+# Optional: enable GPU fine-tuning
+./scripts/run_all.sh --with-finetune
+
 # Windows PowerShell
 .\scripts\run_all.ps1 -Quick
+.\scripts\run_all.ps1 -Quick -WithWebRag
+.\scripts\run_all.ps1 -WithFinetune
 ```
 
 ## Experiment Plan
@@ -246,6 +266,10 @@ python -m src.report.cli compile report/report.tex
 | 09 | Fine-tune 5k | Fine-tuning | Medium data |
 | 10 | Fine-tune 20k | Fine-tuning | Large data |
 | 11 | Flan-T5 CPU | Closed-book | CPU-only fallback |
+| 12 | Postprocess One-Sentence | Prompt Eng. | Formatting ablation |
+
+Optional (disabled by default):
+- 13: RAG Web (DuckDuckGo) for noisy web retrieval comparison
 
 ## Evaluation Methodology
 
@@ -268,17 +292,20 @@ Semantic equivalence scoring:
 - Empty response percentage
 - "Insufficient information" rate
 
-## Cost Estimation
+## Cost Estimation (Approximate)
 
 | Backend | Model | Est. Cost/500 examples |
 |---------|-------|------------------------|
-| OpenAI | gpt-4o-mini | ~$0.50 |
-| OpenAI | gpt-4o | ~$5.00 |
+| OpenAI | gpt-4o-mini | ~$0.50 (pricing estimate) |
+| OpenAI | gpt-4o | ~$5.00 (pricing estimate) |
 | OpenRouter | mistral:free | $0.00 |
 | Ollama | llama3.1:8b | $0.00 (local) |
 | HuggingFace | flan-t5-base | $0.00 (local) |
 
-**Fine-tuning**: Free with Google Colab T4, or ~$1-5 on cloud GPU.
+Actual costs are computed from recorded token usage after running experiments and
+saved in `results/scores/*.csv`.
+
+**Fine-tuning**: Free with Google Colab T4, or ~$1-5 on cloud GPU (estimate).
 
 ## Google Colab Setup
 
@@ -354,6 +381,9 @@ Three main prompt types:
 2. **`flashcard_style`**: Matches dataset format
 3. **`uncertainty_allowed`**: Permits abstention
 
+Postprocessing ablation: `exp_12_postprocess_enforced` applies a deterministic
+one-sentence normalization step to isolate formatting effects from model behavior.
+
 ### Caching (`src/utils/cache.py`)
 
 API calls are cached to:
@@ -389,6 +419,7 @@ Every experiment produces:
 - [ ] Judge evaluation done (files ending in `_judged.jsonl`)
 - [ ] Qualitative reports generated (check `results/qualitative/`)
 - [ ] Figures generated (check `results/figures/`)
+- [ ] Report assets generated (check `results/report_assets/`)
 - [ ] Report compiled (`report/report.pdf`)
 - [ ] Limitations discussed honestly in report
 - [ ] Medical disclaimer included

@@ -16,6 +16,10 @@
 \usepackage{listings}
 
 \geometry{margin=2.5cm}
+\graphicspath{{../results/figures/}}
+
+% Paths to auto-generated assets
+\newcommand{\ResultsAssets}{../results/report_assets}
 
 % Colors
 \definecolor{warningbg}{RGB}{255,243,205}
@@ -80,25 +84,16 @@ We use the \texttt{medalpaca/medical\_meadow\_medical\_flashcards} dataset from 
 
 \subsection{Data Splits}
 
-We create reproducible splits with seed=42:
+We create reproducible splits with seed=42. The exact counts are generated from the
+saved split metadata after running the data preparation step:
 
-\begin{table}[H]
-\centering
-\begin{tabular}{lrr}
-\toprule
-Split & Examples & Percentage \\
-\midrule
-Train & $\sim$33,600 & 80\% \\
-Development & $\sim$4,200 & 10\% \\
-Test & $\sim$4,200 & 10\% \\
-Tiny Test & 200 & (subset) \\
-\bottomrule
-\end{tabular}
-\caption{Dataset splits used in experiments.}
-\label{tab:splits}
-\end{table}
+\IfFileExists{\ResultsAssets/splits.tex}{
+    \input{\ResultsAssets/splits.tex}
+}{
+    \textit{[Split table will be generated after running data preparation]}
+}
 
-The tiny test split is used for rapid iteration and debugging.
+The tiny test split (200 examples by default) is used for rapid iteration and debugging.
 
 \section{Methods}
 
@@ -134,6 +129,10 @@ We evaluate three prompting strategies:
     \textit{``If you are uncertain, respond with `Insufficient information.'\,''}
     \end{quote}
 \end{enumerate}
+
+In addition to prompt variations, we run a \textbf{postprocessing ablation} that
+deterministically extracts the first sentence and removes markdown artifacts,
+to separate formatting effects from model behavior.
 
 \subsection{Fine-tuning with LoRA/QLoRA}
 
@@ -236,18 +235,18 @@ Additional metrics for output quality:
 \section{Results}
 
 % Auto-generated table
-\IfFileExists{tables/main_results.tex}{
-    \input{tables/main_results.tex}
+\IfFileExists{\ResultsAssets/main_results.tex}{
+    \input{\ResultsAssets/main_results.tex}
 }{
     \textit{[Results table will be generated after running experiments]}
 }
 
 \subsection{Metrics Comparison}
 
-\IfFileExists{figures/metrics_comparison.png}{
+\IfFileExists{../results/figures/metrics_comparison.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{figures/metrics_comparison.png}
+        \includegraphics[width=0.9\textwidth]{metrics_comparison.png}
         \caption{Comparison of ROUGE-L, BLEU, and Judge scores across experiments.}
         \label{fig:metrics}
     \end{figure}
@@ -257,10 +256,10 @@ Additional metrics for output quality:
 
 \subsection{Judge Score Distribution}
 
-\IfFileExists{figures/judge_distribution.png}{
+\IfFileExists{../results/figures/judge_distribution.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{figures/judge_distribution.png}
+        \includegraphics[width=0.9\textwidth]{judge_distribution.png}
         \caption{Distribution of judge scores (Correct/Partial/Wrong) by experiment.}
         \label{fig:judge}
     \end{figure}
@@ -268,23 +267,44 @@ Additional metrics for output quality:
     \textit{[Figure will be generated after running experiments]}
 }
 
+\subsection{Prompt Engineering Comparison}
+
+\IfFileExists{\ResultsAssets/prompts.tex}{
+    \input{\ResultsAssets/prompts.tex}
+}{
+    \textit{[Prompt comparison table will be generated after running experiments]}
+}
+
 \subsection{Fine-tuning Ablation}
 
-\IfFileExists{tables/ablation.tex}{
-    \input{tables/ablation.tex}
+\IfFileExists{\ResultsAssets/ablation.tex}{
+    \input{\ResultsAssets/ablation.tex}
 }{
     \textit{[Ablation table will be generated after running experiments]}
 }
 
-\IfFileExists{figures/ablation_curve.png}{
+\IfFileExists{../results/figures/ablation_curve.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{figures/ablation_curve.png}
+        \includegraphics[width=0.8\textwidth]{ablation_curve.png}
         \caption{Effect of training data size on model performance.}
         \label{fig:ablation}
     \end{figure}
 }{
     \textit{[Figure will be generated after running experiments]}
+}
+
+\subsection{Latency Comparison}
+
+\IfFileExists{../results/figures/latency_comparison.png}{
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.9\textwidth]{latency_comparison.png}
+        \caption{Average inference latency per experiment.}
+        \label{fig:latency}
+    \end{figure}
+}{
+    \textit{[Latency figure will be generated after running experiments]}
 }
 
 \section{Qualitative Analysis}
@@ -362,21 +382,15 @@ Cases where automatic metrics and LLM judge disagree reveal interesting patterns
 
 \subsection{Cost Analysis}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{llr}
-\toprule
-Backend & Model & Est. Cost / 500 examples \\
-\midrule
-OpenAI & gpt-4o-mini & $\sim$\$0.50 \\
-OpenAI & gpt-4o & $\sim$\$5.00 \\
-OpenRouter & mistral:free & \$0.00 \\
-Ollama & llama3.1:8b & \$0.00 (local) \\
-\bottomrule
-\end{tabular}
-\caption{Estimated API costs for different backends.}
-\label{tab:costs}
-\end{table}
+Cost estimates are computed from the recorded token usage during experiments
+(or set to zero for local models). The table below is auto-generated from
+the evaluation outputs:
+
+\IfFileExists{\ResultsAssets/costs.tex}{
+    \input{\ResultsAssets/costs.tex}
+}{
+    \textit{[Cost table will be generated after running experiments]}
+}
 
 \subsection{Practical Recommendations}
 
