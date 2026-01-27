@@ -14,6 +14,6 @@ Scoring criteria:
 - Score 0 (WRONG): The prediction is incorrect, contradicts the reference, is irrelevant to the question, or is empty/nonsensical.
 
 Respond with ONLY a valid JSON object in this exact format:
-{"score": <0|1|2>, "reasoning": "<brief 1-2 sentence explanation>"}
+{{"score": <0|1|2>, "reasoning": "<brief 1-2 sentence explanation>"}}
 
 Do not include any text outside the JSON object.
