@@ -1,0 +1,26 @@
+# Experiment 12: HuggingFace Flan-T5 with Flashcard Prompt
+# Prompt engineering variant
+
+name: exp_12_hf_flashcard
+
+# Strategy
+strategy: closed_book
+description: "Flan-T5-base with flashcard-style prompt"
+
+# Model configuration
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 256
+device: cpu
+
+# Prompt
+prompt_id: flashcard_style
+
+# Evaluation settings
+split: tiny_test
+limit: 200
+
+# Expected behavior
+objective: "Test flashcard prompt vs simple direct prompt"
+expected_cost_usd: 0.0
