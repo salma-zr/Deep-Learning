@@ -1,0 +1,26 @@
+name: exp_17_rag_hf_web
+
+strategy: rag
+description: "Local RAG with web retrieval (DuckDuckGo) and Flan-T5 generator"
+
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 128
+device: cpu
+
+retriever_type: web
+top_k: 3
+max_context_chars: 1800
+
+prompt_id: one_sentence_strict
+
+split: tiny_test
+limit: 50
+
+objective: "Compare web retrieval against Wikipedia retrieval in local RAG"
+expected_cost_usd: 0.0
+
+notes: |
+  - Uses DuckDuckGo search via local retriever
+  - Tests retrieval source quality impact on QA
