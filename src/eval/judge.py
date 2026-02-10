@@ -165,11 +165,14 @@ Respond with ONLY a JSON object:
                 latency_ms=0,
             )
         
-        # Format prompt
-        prompt = self.prompt_template.format(
-            question=question,
-            reference=reference,
-            prediction=prediction,
+        # Format prompt safely. Some templates include literal JSON braces
+        # (e.g., {"score": ...}) which break str.format with KeyError.
+        # Using explicit placeholder replacement avoids that issue.
+        prompt = (
+            self.prompt_template
+            .replace("{question}", question)
+            .replace("{reference}", reference)
+            .replace("{prediction}", prediction)
         )
         
         # Generate judgment
