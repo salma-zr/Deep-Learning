@@ -227,13 +227,22 @@ Additional metrics for output quality:
 
 \subsection{Executed Scope in This Report}
 
-Even though the repository supports cloud backends and full GPU fine-tuning, the experiments reported here were executed in a CPU-only environment without external API credentials. Concretely:
+Even though the repository supports cloud backends and full GPU fine-tuning, the experiments reported here were executed in a CPU-only run without external API credentials. Concretely:
 \begin{itemize}
     \item Closed-book and RAG runs were completed locally with HuggingFace models.
     \item LLM-as-a-judge was performed locally (\texttt{flan-t5-large}).
     \item Fine-tuning was run in symbolic mode (pipeline validation, no heavy training).
 \end{itemize}
 We keep this limitation explicit so that the conclusions are interpreted within the right compute context.
+
+\subsection{GPU/API Extension Plan (Colab + Cloud)}
+
+For a stronger final compute-backed version, our extension plan is:
+\begin{itemize}
+    \item \textbf{GPU fine-tuning on Google Colab}: run \texttt{exp\_08}, \texttt{exp\_09}, and \texttt{exp\_10} on T4 and export checkpoints and scores.
+    \item \textbf{Cloud API baselines}: run \texttt{exp\_01}, \texttt{exp\_03}, \texttt{exp\_04}, \texttt{exp\_05}, \texttt{exp\_06}, and \texttt{exp\_07} once API credits are available.
+    \item \textbf{Unified evaluation}: re-run the full evaluation stack and rebuild all report artifacts from the merged score directory.
+\end{itemize}
 
 \subsection{Reproducibility Measures}
 
@@ -290,9 +299,35 @@ LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge 
     \textit{[Figure will be generated after running experiments]}
 }
 
+\subsection{Latency vs Quality Trade-off}
+
+\IfFileExists{figures/latency_quality_tradeoff.png}{
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.9\textwidth]{figures/latency_quality_tradeoff.png}
+        \caption{Trade-off between mean latency and ROUGE-L (color indicates judge mean).}
+        \label{fig:latency_tradeoff}
+    \end{figure}
+}{
+    \textit{[Figure will be generated after running experiments]}
+}
+
+\subsection{Output Format Statistics}
+
+\IfFileExists{figures/format_statistics.png}{
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.9\textwidth]{figures/format_statistics.png}
+        \caption{Format-related behavior by experiment (multi-sentence, insufficient-information, and empty outputs).}
+        \label{fig:format_stats}
+    \end{figure}
+}{
+    \textit{[Figure will be generated after running experiments]}
+}
+
 \subsection{Fine-tuning Ablation}
 
-Due to limited compute budget in this environment, fine-tuning was executed in symbolic mode only (pipeline validation, no real weight updates). Therefore, no quantitative fine-tuning ablation table is reported.
+Because full GPU fine-tuning was not executed in this CPU run, the ablation section reports the available quantitative ablation (RAG top-k). The same section can be replaced by fine-tuning ablation once Colab runs are completed.
 
 \IfFileExists{tables/ablation.tex}{
     \input{tables/ablation.tex}
@@ -304,7 +339,7 @@ Due to limited compute budget in this environment, fine-tuning was executed in s
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.8\textwidth]{figures/ablation_curve.png}
-        \caption{Effect of training data size on model performance.}
+        \caption{Ablation curve for the available setting in this run (RAG top-k).}
         \label{fig:ablation}
     \end{figure}
 }{

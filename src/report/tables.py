@@ -1,5 +1,6 @@
 """Generate LaTeX tables from results."""
 
+import re
 from pathlib import Path
 from typing import Optional
 import pandas as pd
@@ -8,6 +9,21 @@ from src.utils.io_utils import ensure_dir, get_project_root
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _load_score_rows(scores_dir: Path, pattern: str = "*.csv") -> list[dict]:
+    """Load score rows from CSV files matching a pattern."""
+    rows = []
+    for csv_file in scores_dir.glob(pattern):
+        try:
+            df = pd.read_csv(csv_file)
+            if len(df) > 0:
+                row = df.iloc[0].to_dict()
+                row["experiment"] = csv_file.stem
+                rows.append(row)
+        except Exception as e:
+            logger.warning(f"Failed to load {csv_file}: {e}")
+    return rows
 
 
 def generate_results_table(
@@ -114,59 +130,86 @@ def generate_ablation_table(
     
     scores_dir = Path(scores_dir)
     
-    # Load relevant score files
-    all_results = []
-    
-    for csv_file in scores_dir.glob(f"{prefix}*.csv"):
-        try:
-            df = pd.read_csv(csv_file)
-            if len(df) > 0:
-                row = df.iloc[0].to_dict()
-                row["experiment"] = csv_file.stem
-                all_results.append(row)
-        except Exception as e:
-            logger.warning(f"Failed to load {csv_file}: {e}")
-    
-    if not all_results:
-        return _empty_table()
-    
-    results_df = pd.DataFrame(all_results)
-    
-    # Extract train size from experiment name if possible
-    def extract_size(name):
-        import re
-        match = re.search(r'(\d+)k?', name)
-        if match:
-            num = int(match.group(1))
-            return num * 1000 if 'k' in name.lower() else num
-        return 0
-    
-    results_df["train_size"] = results_df["experiment"].apply(extract_size)
-    results_df = results_df.sort_values("train_size")
-    
-    columns = [
-        ("experiment", "Configuration"),
-        ("train_size", "Train Size"),
-        ("rougeL", "ROUGE-L"),
-        ("bleu", "BLEU"),
-        ("judge_mean", "Judge"),
-    ]
-    
-    available_cols = [(col, name) for col, name in columns if col in results_df.columns]
-    
-    latex = _build_latex_table(
-        df=results_df,
-        columns=available_cols,
-        caption="Ablation Study: Effect of Training Data Size",
-        label="tab:ablation",
-    )
-    
+    # First attempt: fine-tuning ablation (by train size)
+    all_results = _load_score_rows(scores_dir, f"{prefix}*.csv")
+    latex = None
+
+    if all_results:
+        results_df = pd.DataFrame(all_results)
+
+        def extract_size(name: str) -> int:
+            match = re.search(r'(\d+)k?', name)
+            if match:
+                num = int(match.group(1))
+                return num * 1000 if 'k' in name.lower() else num
+            return 0
+
+        results_df["train_size"] = results_df["experiment"].apply(extract_size)
+        results_df = results_df.sort_values("train_size")
+
+        columns = [
+            ("experiment", "Configuration"),
+            ("train_size", "Train Size"),
+            ("rougeL", "ROUGE-L"),
+            ("bleu", "BLEU"),
+            ("judge_mean", "Judge"),
+        ]
+        available_cols = [(col, name) for col, name in columns if col in results_df.columns]
+
+        latex = _build_latex_table(
+            df=results_df,
+            columns=available_cols,
+            caption="Ablation Study: Effect of Training Data Size",
+            label="tab:ablation",
+        )
+    else:
+        # Fallback: RAG top-k ablation when fine-tuning data is unavailable
+        rag_rows = []
+        for row in _load_score_rows(scores_dir, "*.csv"):
+            name = row["experiment"].lower()
+            if "rag" not in name:
+                continue
+
+            top_k = None
+            # Explicit top-k in experiment name
+            m = re.search(r"topk[_-]?(\d+)", name)
+            if m:
+                top_k = int(m.group(1))
+            # Default RAG configs usually use top_k=3
+            elif "wikipedia" in name or "web" in name:
+                top_k = 3
+
+            if top_k is not None:
+                row["top_k"] = top_k
+                rag_rows.append(row)
+
+        if rag_rows:
+            rag_df = pd.DataFrame(rag_rows).sort_values(["top_k", "experiment"])
+            columns = [
+                ("experiment", "Configuration"),
+                ("top_k", "Top-k"),
+                ("rougeL", "ROUGE-L"),
+                ("bleu", "BLEU"),
+                ("judge_mean", "Judge"),
+                ("latency_mean_ms", "Latency (ms)"),
+            ]
+            available_cols = [(col, name) for col, name in columns if col in rag_df.columns]
+
+            latex = _build_latex_table(
+                df=rag_df,
+                columns=available_cols,
+                caption="Ablation Study: Effect of Retrieval Top-k in RAG",
+                label="tab:ablation",
+            )
+        else:
+            latex = _empty_table()
+
     if output_file:
         output_file = Path(output_file)
         ensure_dir(output_file)
         output_file.write_text(latex, encoding="utf-8")
         logger.info(f"Ablation table saved to {output_file}")
-    
+
     return latex
 
 

@@ -311,6 +311,9 @@ from google.colab import files
 files.download('model.zip')
 ```
 
+For an end-to-end upgrade path (Colab GPU + API reruns + final rebuild), see:
+`docs/COLAB_API_RUNBOOK.md`.
+
 ## Troubleshooting
 
 ### "OPENAI_API_KEY not set"

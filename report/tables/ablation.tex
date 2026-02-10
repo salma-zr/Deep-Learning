@@ -1,0 +1,14 @@
+\begin{table}[htbp]
+\centering
+\caption{Ablation Study: Effect of Retrieval Top-k in RAG}
+\label{tab:ablation}
+\begin{tabular}{lccccc}
+\toprule
+Configuration & Top-k & ROUGE-L & BLEU & Judge & Latency (ms) \\
+\midrule
+exp_15_rag_hf_wikipedia & 3 & 0.0866 & 0.0001 & 1.0000 & 925.1218 \\
+exp_17_rag_hf_web & 3 & 0.1582 & 0.0003 & 1.0200 & 1243.6535 \\
+exp_16_rag_hf_topk5 & 5 & 0.0576 & 0.0001 & 0.9800 & 1450.5536 \\
+\bottomrule
+\end{tabular}
+\end{table}

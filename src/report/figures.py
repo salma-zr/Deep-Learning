@@ -1,5 +1,6 @@
 """Generate figures for the report."""
 
+import re
 from pathlib import Path
 from typing import Optional
 import pandas as pd
@@ -18,6 +19,21 @@ import seaborn as sns
 # Set style
 plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_palette("husl")
+
+
+def _load_scores(scores_dir: Path) -> pd.DataFrame:
+    """Load all score CSVs into a DataFrame."""
+    rows = []
+    for csv_file in scores_dir.glob("*.csv"):
+        try:
+            df = pd.read_csv(csv_file)
+            if len(df) > 0:
+                row = df.iloc[0].to_dict()
+                row["experiment"] = csv_file.stem
+                rows.append(row)
+        except Exception:
+            pass
+    return pd.DataFrame(rows)
 
 
 def plot_metrics_comparison(
@@ -46,24 +62,11 @@ def plot_metrics_comparison(
     output_file = Path(output_file)
     ensure_dir(output_file)
     
-    # Load all scores
-    all_results = []
-    for csv_file in scores_dir.glob("*.csv"):
-        try:
-            df = pd.read_csv(csv_file)
-            if len(df) > 0:
-                row = df.iloc[0].to_dict()
-                row["experiment"] = csv_file.stem
-                all_results.append(row)
-        except Exception:
-            pass
-    
-    if not all_results:
+    results_df = _load_scores(scores_dir)
+    if results_df.empty:
         logger.warning("No results to plot")
         _create_placeholder_figure(output_file, "No results available")
         return str(output_file)
-    
-    results_df = pd.DataFrame(all_results)
     
     # Filter to available metrics
     available_metrics = [m for m in metrics if m in results_df.columns]
@@ -125,61 +128,90 @@ def plot_ablation_curve(
     output_file = Path(output_file)
     ensure_dir(output_file)
     
-    # Load relevant experiments
-    all_results = []
-    for csv_file in scores_dir.glob(f"{prefix}*.csv"):
-        try:
-            df = pd.read_csv(csv_file)
-            if len(df) > 0:
-                row = df.iloc[0].to_dict()
-                row["experiment"] = csv_file.stem
-                
-                # Extract size
-                import re
-                match = re.search(r'(\d+)k?', csv_file.stem)
-                if match:
-                    num = int(match.group(1))
-                    row["size"] = num * 1000 if 'k' in csv_file.stem.lower() else num
-                else:
-                    row["size"] = 0
-                
-                all_results.append(row)
-        except Exception:
-            pass
-    
-    if not all_results:
+    all_scores = _load_scores(scores_dir)
+    if all_scores.empty:
         _create_placeholder_figure(output_file, "No ablation data available")
         return str(output_file)
-    
-    results_df = pd.DataFrame(all_results).sort_values("size")
-    
-    # Create plot
+
+    # 1) Try fine-tuning ablation first
+    ft_rows = []
+    for _, row in all_scores.iterrows():
+        name = str(row.get("experiment", ""))
+        if not name.startswith(prefix):
+            continue
+        match = re.search(r"(\d+)k?", name.lower())
+        if not match:
+            continue
+        n = int(match.group(1))
+        size = n * 1000 if "k" in name.lower() else n
+        item = dict(row)
+        item["x"] = size
+        ft_rows.append(item)
+
     fig, ax = plt.subplots(figsize=(10, 6))
-    
     metrics = ["rougeL", "judge_mean"]
     colors = ["#2ecc71", "#3498db"]
-    
-    for metric, color in zip(metrics, colors):
-        if metric in results_df.columns:
-            ax.plot(
-                results_df["size"],
-                results_df[metric],
-                marker="o",
-                label=metric,
-                color=color,
-                linewidth=2,
-                markersize=8,
-            )
-    
-    ax.set_xlabel("Training Examples")
+
+    if ft_rows:
+        results_df = pd.DataFrame(ft_rows).sort_values("x")
+        for metric, color in zip(metrics, colors):
+            if metric in results_df.columns:
+                ax.plot(
+                    results_df["x"],
+                    results_df[metric],
+                    marker="o",
+                    label=metric,
+                    color=color,
+                    linewidth=2,
+                    markersize=8,
+                )
+        ax.set_xlabel("Training Examples")
+        ax.set_title("Effect of Training Data Size on Performance")
+        if results_df["x"].max() / max(results_df["x"].min(), 1) > 10:
+            ax.set_xscale("log")
+    else:
+        # 2) Fallback to RAG top-k ablation
+        rag_rows = []
+        for _, row in all_scores.iterrows():
+            name = str(row.get("experiment", "")).lower()
+            if "rag" not in name:
+                continue
+            top_k = None
+            m = re.search(r"topk[_-]?(\d+)", name)
+            if m:
+                top_k = int(m.group(1))
+            elif "wikipedia" in name or "web" in name:
+                top_k = 3
+            if top_k is None:
+                continue
+            item = dict(row)
+            item["x"] = top_k
+            rag_rows.append(item)
+
+        if not rag_rows:
+            plt.close(fig)
+            _create_placeholder_figure(output_file, "No ablation data available")
+            return str(output_file)
+
+        results_df = pd.DataFrame(rag_rows).sort_values("x")
+        for metric, color in zip(metrics, colors):
+            if metric in results_df.columns:
+                ax.plot(
+                    results_df["x"],
+                    results_df[metric],
+                    marker="o",
+                    label=metric,
+                    color=color,
+                    linewidth=2,
+                    markersize=8,
+                )
+        ax.set_xlabel("Retrieved documents (top-k)")
+        ax.set_title("Effect of Retrieval Top-k on RAG Performance")
+        ax.set_xticks(sorted(results_df["x"].unique()))
+
     ax.set_ylabel("Score")
-    ax.set_title("Effect of Training Data Size on Performance")
     ax.legend()
-    ax.set_ylim(0, 1)
-    
-    # Log scale for x-axis if range is large
-    if results_df["size"].max() / max(results_df["size"].min(), 1) > 10:
-        ax.set_xscale("log")
+    ax.set_ylim(0, 1.05)
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
@@ -274,23 +306,10 @@ def plot_judge_distribution(
     output_file = Path(output_file)
     ensure_dir(output_file)
     
-    # Load scores
-    all_results = []
-    for csv_file in scores_dir.glob("*.csv"):
-        try:
-            df = pd.read_csv(csv_file)
-            if len(df) > 0:
-                row = df.iloc[0].to_dict()
-                row["experiment"] = csv_file.stem
-                all_results.append(row)
-        except Exception:
-            pass
-    
-    if not all_results:
+    results_df = _load_scores(scores_dir)
+    if results_df.empty:
         _create_placeholder_figure(output_file, "No judge data available")
         return str(output_file)
-    
-    results_df = pd.DataFrame(all_results)
     
     # Check for judge columns
     judge_cols = ["judge_correct_pct", "judge_partial_pct", "judge_wrong_pct"]
@@ -328,6 +347,102 @@ def plot_judge_distribution(
     return str(output_file)
 
 
+def plot_latency_quality_tradeoff(
+    scores_dir: Optional[str | Path] = None,
+    output_file: Optional[str | Path] = None,
+) -> str:
+    """Scatter plot of latency vs ROUGE-L with judge color."""
+    if scores_dir is None:
+        scores_dir = get_project_root() / "results" / "scores"
+    if output_file is None:
+        output_file = get_project_root() / "results" / "figures" / "latency_quality_tradeoff.png"
+
+    scores_dir = Path(scores_dir)
+    output_file = Path(output_file)
+    ensure_dir(output_file)
+
+    df = _load_scores(scores_dir)
+    required = {"latency_mean_ms", "rougeL"}
+    if df.empty or not required.issubset(set(df.columns)):
+        _create_placeholder_figure(output_file, "Latency/quality data not available")
+        return str(output_file)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    color_vals = df["judge_mean"] if "judge_mean" in df.columns else None
+    sc = ax.scatter(
+        df["latency_mean_ms"],
+        df["rougeL"],
+        c=color_vals,
+        cmap="viridis",
+        s=80,
+        alpha=0.9,
+        edgecolors="black",
+        linewidths=0.4,
+    )
+
+    for _, row in df.iterrows():
+        ax.annotate(
+            row["experiment"].replace("exp_", ""),
+            (row["latency_mean_ms"], row["rougeL"]),
+            textcoords="offset points",
+            xytext=(4, 4),
+            fontsize=8,
+        )
+
+    if color_vals is not None:
+        cbar = plt.colorbar(sc, ax=ax)
+        cbar.set_label("Judge mean")
+
+    ax.set_xlabel("Mean latency (ms)")
+    ax.set_ylabel("ROUGE-L")
+    ax.set_title("Latency vs ROUGE-L trade-off")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Latency-quality tradeoff saved to {output_file}")
+    return str(output_file)
+
+
+def plot_format_statistics(
+    scores_dir: Optional[str | Path] = None,
+    output_file: Optional[str | Path] = None,
+) -> str:
+    """Bar plot for output-format behavior across experiments."""
+    if scores_dir is None:
+        scores_dir = get_project_root() / "results" / "scores"
+    if output_file is None:
+        output_file = get_project_root() / "results" / "figures" / "format_statistics.png"
+
+    scores_dir = Path(scores_dir)
+    output_file = Path(output_file)
+    ensure_dir(output_file)
+
+    df = _load_scores(scores_dir)
+    cols = ["multi_sentence_pct", "insufficient_info_pct", "empty_pct"]
+    if df.empty or not all(c in df.columns for c in cols):
+        _create_placeholder_figure(output_file, "Format statistics not available")
+        return str(output_file)
+
+    plot_df = df[["experiment"] + cols].copy()
+    melted = plot_df.melt(id_vars="experiment", var_name="metric", value_name="value")
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+    sns.barplot(data=melted, x="experiment", y="value", hue="metric", ax=ax)
+    ax.set_xlabel("Experiment")
+    ax.set_ylabel("Percentage")
+    ax.set_title("Output format statistics by experiment")
+    ax.tick_params(axis="x", labelrotation=40)
+    for label in ax.get_xticklabels():
+        label.set_ha("right")
+    ax.legend(title="")
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Format statistics figure saved to {output_file}")
+    return str(output_file)
+
+
 def generate_all_figures(
     scores_dir: Optional[str | Path] = None,
     output_dir: Optional[str | Path] = None,
@@ -361,6 +476,20 @@ def generate_all_figures(
         figures.append(fig)
     except Exception as e:
         logger.warning(f"Failed to create ablation curve: {e}")
+
+    # Latency/quality trade-off
+    try:
+        fig = plot_latency_quality_tradeoff(scores_dir, output_dir / "latency_quality_tradeoff.png")
+        figures.append(fig)
+    except Exception as e:
+        logger.warning(f"Failed to create latency-quality tradeoff: {e}")
+
+    # Output format statistics
+    try:
+        fig = plot_format_statistics(scores_dir, output_dir / "format_statistics.png")
+        figures.append(fig)
+    except Exception as e:
+        logger.warning(f"Failed to create format statistics: {e}")
     
     return figures
 
