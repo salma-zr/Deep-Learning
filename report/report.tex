@@ -248,7 +248,7 @@ Additional metrics for output quality:
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.9\textwidth]{figures/metrics_comparison.png}
-        \caption{Comparison of ROUGE-L, BLEU, and Judge scores across experiments.}
+        \caption{Comparison of ROUGE-L and BLEU across local closed-book and RAG experiments.}
         \label{fig:metrics}
     \end{figure}
 }{
@@ -257,11 +257,13 @@ Additional metrics for output quality:
 
 \subsection{Judge Score Distribution}
 
+This run was executed without cloud API credentials to keep the pipeline fully local and cost-free, so LLM-as-a-judge scores are not available in the final tables.
+
 \IfFileExists{figures/judge_distribution.png}{
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.9\textwidth]{figures/judge_distribution.png}
-        \caption{Distribution of judge scores (Correct/Partial/Wrong) by experiment.}
+        \caption{Judge distribution placeholder (judge step skipped in this local run).}
         \label{fig:judge}
     \end{figure}
 }{
@@ -269,6 +271,8 @@ Additional metrics for output quality:
 }
 
 \subsection{Fine-tuning Ablation}
+
+Due to limited compute budget in this environment, fine-tuning was executed in symbolic mode only (pipeline validation, no real weight updates). Therefore, no quantitative fine-tuning ablation table is reported.
 
 \IfFileExists{tables/ablation.tex}{
     \input{tables/ablation.tex}
@@ -289,46 +293,42 @@ Additional metrics for output quality:
 
 \section{Qualitative Analysis}
 
-Selected examples from each category (best, worst, controversial) are provided in the HTML qualitative reports. Key observations:
+Selected examples from each category (best, worst, controversial) are summarized below.
 
 \subsection{Successful Cases}
 
-\textit{[To be completed based on actual results]}
-
 \begin{itemize}
-    \item Types of questions well-handled
-    \item Characteristics of successful responses
+    \item The flashcard-style prompt (\texttt{exp\_13\_hf\_flan\_flashcard}) gave the strongest lexical alignment (ROUGE-L 0.1328), with concise outputs and low multi-sentence rate (3.75\%).
+    \item Questions with explicit procedural wording (e.g., effects of ion transport, definition-style prompts) were generally handled better than broad clinical management questions.
+    \item The strict one-sentence setup (\texttt{exp\_12\_hf\_flan\_strict}) improved consistency over the simple direct baseline (\texttt{exp\_11}), suggesting prompt structure matters even for the same model.
 \end{itemize}
 
 \subsection{Failure Cases}
 
-\textit{[To be completed based on actual results]}
-
 \begin{itemize}
-    \item Common failure modes
-    \item Types of questions causing difficulty
+    \item The uncertainty-allowed prompt (\texttt{exp\_14}) collapsed into systematic abstention: 100\% ``Insufficient information'', near-zero ROUGE-L (0.0004).
+    \item Some answers were fluent but medically off-target (e.g., wrong entities for enzyme/pathogen questions), indicating factual brittleness of small local models.
+    \item Long multi-concept questions (diagnosis + treatment + mechanism) showed lower overlap and more generic responses.
 \end{itemize}
 
 \subsection{Controversial Cases}
 
-Cases where automatic metrics and LLM judge disagree reveal interesting patterns:
+Without judge scores, controversial cases were identified from low lexical overlap but partially plausible responses:
 
 \begin{itemize}
-    \item High ROUGE, Low Judge: Possible hallucinations with fluent text
-    \item Low ROUGE, High Judge: Valid paraphrases penalized by metrics
+    \item Some RAG responses were semantically related but phrased too generally, yielding low ROUGE/BLEU despite partially relevant content.
+    \item Several closed-book responses matched the sentence format but omitted crucial medical specificity, which automatic overlap metrics only partially capture.
 \end{itemize}
 
 \section{Discussion}
 
 \subsection{Key Findings}
 
-\textit{[To be completed based on actual results]}
-
 \begin{enumerate}
-    \item Performance comparison across methods
-    \item Impact of prompt engineering
-    \item Value of fine-tuning vs RAG
-    \item Cost-performance trade-offs
+    \item \textbf{Prompt engineering had the largest positive impact in this local setting.} Flashcard prompting improved ROUGE-L from 0.0855 (simple direct baseline) to 0.1328 (+55\% relative).
+    \item \textbf{RAG was not automatically better with a small generator.} RAG top\_k=3 reached ROUGE-L 0.0866, while top\_k=5 dropped to 0.0576 and increased latency from 925ms to 1451ms, showing context-noise and cost trade-offs.
+    \item \textbf{Abstention prompting requires calibration.} The uncertainty prompt over-triggered abstention (100\%), making outputs safe but uninformative.
+    \item \textbf{Compute-aware experimentation is feasible.} A fully local CPU pipeline produced reproducible results across multiple strategies with zero API cost, suitable for course constraints.
 \end{enumerate}
 
 \subsection{Limitations}
@@ -346,7 +346,7 @@ Cases where automatic metrics and LLM judge disagree reveal interesting patterns
 
 \begin{itemize}
     \item ROUGE/BLEU penalize valid paraphrases
-    \item LLM judge may have systematic biases
+    \item LLM judge was not run in this final local execution (no API-based semantic scoring)
     \item Semantic equivalence is subjective in medical domain
     \item No gold-standard human evaluation
 \end{itemize}

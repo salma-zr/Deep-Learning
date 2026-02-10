@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Main Results: Comparison of Medical QA Approaches}
+\label{tab:main_results}
+\begin{tabular}{lcccc}
+\toprule
+Experiment & ROUGE-L & BLEU & Latency (ms) & N \\
+\midrule
+exp_15_rag_hf_wikipedia & 0.0866 & 0.0001 & 925.1218 & 50 \\
+exp_13_hf_flan_flashcard & 0.1328 & 0.0009 & 265.1750 & 80 \\
+exp_11_hf_flan_t5 & 0.0855 & 0.0000 & 189.5464 & 80 \\
+exp_14_hf_flan_uncertainty & 0.0004 & 0.0000 & 120.9768 & 80 \\
+exp_16_rag_hf_topk5 & 0.0576 & 0.0001 & 1450.5536 & 50 \\
+exp_12_hf_flan_strict & 0.1025 & 0.0000 & 231.6121 & 80 \\
+\bottomrule
+\end{tabular}
+\end{table}
