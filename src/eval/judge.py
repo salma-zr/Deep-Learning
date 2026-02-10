@@ -102,7 +102,10 @@ Respond with ONLY a JSON object:
     def _get_cache_key(self, question: str, reference: str, prediction: str) -> str:
         """Generate cache key."""
         import hashlib
-        content = f"{self.model}:{question}:{reference}:{prediction}"
+        # Include prompt template hash so cache is invalidated when
+        # judging instructions change.
+        prompt_hash = hashlib.sha256(self.prompt_template.encode()).hexdigest()[:16]
+        content = f"{self.model}:{prompt_hash}:{question}:{reference}:{prediction}"
         return hashlib.sha256(content.encode()).hexdigest()[:32]
     
     def _parse_response(self, response: str) -> tuple[int, str]:
@@ -124,13 +127,22 @@ Respond with ONLY a JSON object:
         except (json.JSONDecodeError, ValueError, KeyError):
             pass
         
-        # Fallback: try to find score in text
-        if "2" in response or "CORRECT" in response.upper():
-            return 2, "Parsed from text"
-        elif "1" in response or "PARTIAL" in response.upper():
-            return 1, "Parsed from text"
-        else:
-            return 0, "Could not parse response"
+        # Fallback 1: explicit "score: X"
+        score_match = re.search(r'(?i)\bscore\b\s*[:=]?\s*([012])\b', response)
+        if score_match:
+            return int(score_match.group(1)), "Parsed from score field"
+        
+        # Fallback 2: standalone single digit output (e.g., "2")
+        single_digit = re.search(r'^\s*([012])\s*$', response.strip())
+        if single_digit:
+            return int(single_digit.group(1)), "Parsed from single-digit output"
+        
+        # Fallback 3: first standalone digit in response
+        digit_any = re.search(r'\b([012])\b', response)
+        if digit_any:
+            return int(digit_any.group(1)), "Parsed from standalone digit"
+        
+        return 0, "Could not parse response"
     
     def judge(
         self,
