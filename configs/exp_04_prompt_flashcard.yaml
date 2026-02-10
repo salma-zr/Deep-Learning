@@ -1,0 +1,40 @@
+# Experiment 04: Flashcard-Style Prompt
+# Prompt engineering - flashcard format
+
+name: exp_04_prompt_flashcard
+
+# Strategy
+strategy: closed_book
+description: "Prompt engineering: Flashcard-style prompt format"
+
+# Model configuration
+backend: openai
+model: gpt-4o-mini
+temperature: 0.0
+max_tokens: 256
+
+# Prompt - using flashcard style
+prompt_id: flashcard_style
+system_prompt: "You are a medical flashcard completion assistant."
+
+# Evaluation settings
+split: test
+limit: 500
+
+# Expected behavior
+objective: "Test if flashcard-style prompt improves answer format"
+expected_cost_usd: 0.50
+
+# Ablation info
+ablation_of: exp_01_openai_baseline
+ablation_variable: prompt_style
+ablation_values:
+  - one_sentence_strict
+  - flashcard_style
+  - uncertainty_allowed
+
+# Notes
+notes: |
+  - Tests prompt format matching dataset style
+  - Compare format compliance vs baseline
+  - May reduce multi-sentence responses

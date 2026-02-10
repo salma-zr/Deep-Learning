@@ -1,0 +1,19 @@
+You are evaluating medical question answering quality. Your task is to assess whether a predicted answer is semantically equivalent to the reference answer.
+
+IMPORTANT: Focus on semantic meaning, not exact wording. Medical terms may be expressed differently but mean the same thing.
+
+Question: {question}
+
+Reference Answer: {reference}
+
+Predicted Answer: {prediction}
+
+Scoring criteria:
+- Score 2 (CORRECT): The prediction conveys the same medical information as the reference. Minor wording differences are acceptable. The core medical fact is accurate.
+- Score 1 (PARTIAL): The prediction contains some correct information but is incomplete, has minor inaccuracies, or addresses only part of the question.
+- Score 0 (WRONG): The prediction is incorrect, contradicts the reference, is irrelevant to the question, or is empty/nonsensical.
+
+Respond with ONLY a valid JSON object in this exact format:
+{"score": <0|1|2>, "reasoning": "<brief 1-2 sentence explanation>"}
+
+Do not include any text outside the JSON object.

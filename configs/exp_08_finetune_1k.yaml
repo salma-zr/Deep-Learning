@@ -1,0 +1,44 @@
+# Experiment 08: Fine-tuning with 1k examples
+# LoRA fine-tuning ablation - small data
+
+name: exp_08_finetune_1k
+
+# Strategy
+strategy: finetune
+description: "QLoRA fine-tuning with 1,000 training examples"
+
+# Model configuration
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+backend: huggingface
+
+# Fine-tuning configuration
+use_lora: true
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+load_in_4bit: true
+
+# Training
+train_size: 1000
+num_epochs: 3
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 0.0002
+
+# Output
+output_dir: models/finetune_1k
+
+# Evaluation
+prompt_id: flashcard_style
+split: test
+limit: 500
+
+# Expected behavior
+objective: "Establish fine-tuning baseline with limited data"
+expected_cost_usd: 0.0  # Colab free tier
+
+# Notes
+notes: |
+  - Tests if fine-tuning helps with small data
+  - Use Colab T4 for training
+  - Compare to non-finetuned TinyLlama

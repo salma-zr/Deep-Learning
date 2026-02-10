@@ -1,0 +1,33 @@
+# Experiment 11: HuggingFace Flan-T5 (CPU Fallback)
+# Local inference without GPU
+
+name: exp_11_hf_flan_t5
+
+# Strategy
+strategy: closed_book
+description: "Flan-T5-base via HuggingFace (CPU-friendly fallback)"
+
+# Model configuration
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 256
+device: cpu  # Explicitly CPU
+
+# Prompt
+prompt_id: simple_direct  # T5 works better with simple prompts
+
+# Evaluation settings
+split: tiny_test  # Small set due to slow CPU inference
+limit: 200
+
+# Expected behavior
+objective: "Provide CPU-only baseline for environments without GPU/API"
+expected_cost_usd: 0.0
+
+# Notes
+notes: |
+  - Works on CPU (no GPU required)
+  - Much slower than GPU/API options
+  - Good for testing pipeline without API keys
+  - Flan-T5 is instruction-tuned

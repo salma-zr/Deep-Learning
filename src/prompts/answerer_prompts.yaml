@@ -1,0 +1,94 @@
+# Answerer Prompt Templates for Medical QA
+# 
+# Each prompt has:
+#   - template: The prompt string with {question} placeholder
+#   - description: What this prompt style emphasizes
+#   - use_case: When to use this prompt
+#
+# Variables available: {question}
+
+one_sentence_strict:
+  description: "Strict single-sentence answer format"
+  use_case: "Best for models that tend to be verbose; enforces concise responses"
+  template: |
+    Answer the following medical question in exactly one clear, concise sentence.
+    
+    Question: {question}
+    
+    Answer in one sentence:
+
+flashcard_style:
+  description: "Mimics flashcard completion task"
+  use_case: "Matches the dataset format; good for prompting models to give brief answers"
+  template: |
+    Complete this medical flashcard with a brief, accurate answer.
+    
+    Medical Question: {question}
+    
+    Flashcard Answer:
+
+uncertainty_allowed:
+  description: "Allows model to express uncertainty"
+  use_case: "Reduces hallucinations by permitting 'I don't know' responses"
+  template: |
+    Answer the following medical question. If you are uncertain or the information is not clear, respond with "Insufficient information."
+    
+    Question: {question}
+    
+    Answer:
+
+detailed_medical:
+  description: "Requests medical-style precise answer"
+  use_case: "For models that understand medical context well"
+  template: |
+    You are a medical education assistant. Provide a precise, factual answer to the following question in one sentence. Use proper medical terminology where appropriate.
+    
+    Question: {question}
+    
+    Medical Answer:
+
+simple_direct:
+  description: "Minimal prompt, direct question"
+  use_case: "Baseline prompt with minimal instruction; tests model's default behavior"
+  template: |
+    {question}
+
+zero_shot_cot:
+  description: "Chain-of-thought with final answer extraction"
+  use_case: "For complex questions; may improve reasoning but increases token usage"
+  template: |
+    Medical Question: {question}
+    
+    Think through this step by step, then provide your final answer in one sentence.
+    
+    Reasoning:
+
+few_shot_medical:
+  description: "Few-shot examples for medical QA"
+  use_case: "Demonstrates expected format; good for smaller models"
+  template: |
+    Answer medical questions concisely in one sentence.
+    
+    Example 1:
+    Q: What is the primary function of red blood cells?
+    A: Red blood cells transport oxygen from the lungs to tissues throughout the body.
+    
+    Example 2:
+    Q: What organ produces insulin?
+    A: The pancreas produces insulin through its beta cells in the islets of Langerhans.
+    
+    Now answer this question:
+    Q: {question}
+    A:
+
+strict_format:
+  description: "Explicitly enforces format constraints"
+  use_case: "When model outputs need strict formatting for evaluation"
+  template: |
+    TASK: Answer a medical question
+    FORMAT: Single sentence, no bullet points, no lists
+    CONSTRAINT: Maximum 50 words
+    
+    QUESTION: {question}
+    
+    ANSWER:
