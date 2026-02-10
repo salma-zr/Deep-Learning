@@ -23,7 +23,7 @@
 
 % Title
 \title{Medical Question Answering:\\A Comparative Study of LLM Approaches}
-\author{Deep Learning Course Project}
+\author{ZRIAA Salma \\ LAZZOULI}
 \date{\today}
 
 \begin{document}
@@ -31,7 +31,7 @@
 \maketitle
 
 \begin{abstract}
-This report presents a comparative study of different approaches for medical question answering using the Medical Flashcards dataset. We evaluate closed-book generation, prompt engineering, fine-tuning with LoRA/QLoRA, and retrieval-augmented generation (RAG). Our evaluation combines automatic metrics (ROUGE, BLEU) with LLM-as-a-judge for semantic equivalence assessment. We provide a detailed analysis of each approach's strengths, limitations, and practical considerations, with particular attention to the risks of hallucinations in medical AI applications.
+This report presents a student-led comparative study of medical question answering with large language models on the Medical Flashcards dataset. We compare closed-book generation, prompt engineering, and retrieval-augmented generation (RAG), and we include a symbolic fine-tuning step to validate the full pipeline under compute constraints. The project was organized after a brainstorming phase focused on three priorities: reproducibility, realistic compute budget, and medical safety. Evaluation combines lexical metrics (ROUGE, BLEU), local LLM-as-a-judge scoring, latency/cost indicators, and qualitative reading of outputs. We discuss both gains and failure modes, with explicit attention to hallucination risks in medical contexts.
 
 \vspace{0.5em}
 \noindent\fcolorbox{warningborder}{warningbg}{%
@@ -64,6 +64,16 @@ Our objectives are:
     \item Analyze RAG for knowledge grounding and hallucination reduction
     \item Provide honest discussion of limitations and practical considerations
 \end{enumerate}
+
+\subsection{Project Framing and Brainstorming}
+
+At the beginning of the project, we listed many possible directions (cloud APIs, local models, multiple retrievers, full fine-tuning, prompt variants). To keep the work both rigorous and feasible, we structured the exploration around controlled comparisons:
+\begin{itemize}
+    \item \textbf{Prompt axis}: same model, different prompts (strict, flashcard, uncertainty).
+    \item \textbf{Retrieval axis}: same generator, different external sources (Wikipedia vs web) and different top\_k.
+    \item \textbf{Evaluation axis}: combine automatic metrics, semantic judging, and manual qualitative checks.
+\end{itemize}
+This framing helped us avoid random trial-and-error and keep a coherent experimental narrative.
 
 \section{Dataset}
 
@@ -184,7 +194,7 @@ N-gram precision with brevity penalty, computed using sacrebleu. Standard machin
 
 \subsection{LLM-as-a-Judge}
 
-We use GPT-4o-mini as a judge to assess semantic equivalence:
+For this final report, we use a local judge model (\texttt{google/flan-t5-large}) to assess semantic equivalence. We initially planned to use a cloud judge, but we prioritized a fully reproducible local pipeline:
 
 \begin{itemize}
     \item \textbf{Score 2} (Correct): Semantically equivalent to reference
@@ -214,6 +224,16 @@ Additional metrics for output quality:
     \item Cloud APIs: OpenAI, OpenRouter
     \item Fine-tuning: Google Colab T4 GPU (or symbolic mode)
 \end{itemize}
+
+\subsection{Executed Scope in This Report}
+
+Even though the repository supports cloud backends and full GPU fine-tuning, the experiments reported here were executed in a CPU-only environment without external API credentials. Concretely:
+\begin{itemize}
+    \item Closed-book and RAG runs were completed locally with HuggingFace models.
+    \item LLM-as-a-judge was performed locally (\texttt{flan-t5-large}).
+    \item Fine-tuning was run in symbolic mode (pipeline validation, no heavy training).
+\end{itemize}
+We keep this limitation explicit so that the conclusions are interpreted within the right compute context.
 
 \subsection{Reproducibility Measures}
 
@@ -320,7 +340,7 @@ Several experiments show metric-judge divergence:
 \begin{itemize}
     \item The uncertainty prompt has the lowest lexical overlap but a near-partial judge mean (0.9875), showing that abstention can be interpreted as ``partially acceptable'' by the local judge while remaining uninformative for QA.
     \item RAG web has the best lexical scores, but judge-correct remains low (4\%), indicating many outputs are still treated as incomplete rather than fully correct.
-    \item Judge means cluster near 1.0 across methods, highlighting the need for careful interpretation and possible human validation.
+    \item Judge means cluster near 1.0 across methods (large partial class), so judge outputs should be treated as supportive signals, not final ground truth.
 \end{itemize}
 
 \section{Discussion}
@@ -332,7 +352,7 @@ Several experiments show metric-judge divergence:
     \item \textbf{Prompt engineering remains important.} Flashcard prompting substantially improved closed-book quality versus simple direct prompting.
     \item \textbf{More retrieved context is not always better.} The top\_k=5 RAG ablation increased latency and reduced quality versus top\_k=3.
     \item \textbf{Abstention prompting requires calibration.} The uncertainty prompt over-triggered abstention (100\%), making outputs safe but low-utility.
-    \item \textbf{Compute-aware experimentation is feasible.} A fully local CPU pipeline produced reproducible multi-strategy results with zero API cost.
+    \item \textbf{Compute-aware experimentation is feasible.} A fully local CPU pipeline still allowed us to compare several meaningful strategies and build a reproducible report.
 \end{enumerate}
 
 \subsection{Limitations}
@@ -387,22 +407,22 @@ Ollama & llama3.1:8b & \$0.00 (local) \\
 Based on our findings:
 
 \begin{itemize}
-    \item \textbf{For cost-sensitive applications}: Local models (Ollama) provide reasonable quality at zero API cost
-    \item \textbf{For best quality}: RAG with cloud API balances accuracy and cost
-    \item \textbf{For specialized domains}: Fine-tuning shows benefits with sufficient data
-    \item \textbf{Critical}: Never deploy medical QA without human oversight
+    \item \textbf{For low-budget student settings}: Start with local closed-book + prompt engineering, then add one RAG variant for comparison.
+    \item \textbf{For robust analysis}: Always report lexical metrics, semantic judging, and qualitative examples together.
+    \item \textbf{For RAG tuning}: Test top\_k carefully; larger context can increase noise and latency.
+    \item \textbf{Critical}: Never deploy medical QA without human oversight.
 \end{itemize}
 
 \section{Conclusion}
 
-This study provides a comprehensive comparison of approaches for medical question answering. We demonstrate the trade-offs between closed-book generation, prompt engineering, fine-tuning, and RAG.
+This project provides a comparative and reproducible study of medical QA strategies under realistic compute constraints. The main lesson is not that one method ``wins'' in every metric, but that design choices (prompt style, retrieval source, top\_k, abstention policy) have measurable and interpretable effects on output quality and latency.
 
 \textbf{Main contributions}:
 \begin{enumerate}
-    \item Reproducible experimental framework for medical QA
-    \item Comprehensive evaluation combining automatic and LLM-based metrics
-    \item Honest analysis of limitations and failure modes
-    \item Practical cost and performance guidelines
+    \item Reproducible end-to-end pipeline for medical QA experiments.
+    \item Structured comparison across closed-book, prompt engineering, and multiple RAG setups.
+    \item Multi-view evaluation (ROUGE/BLEU, local judge, latency, qualitative analysis).
+    \item Transparent discussion of limits, including judge bias and compute constraints.
 \end{enumerate}
 
 \textbf{Future work}:
@@ -468,18 +488,19 @@ Answer (one sentence):
 \label{app:judge}
 
 \begin{verbatim}
-Compare the prediction to the reference answer.
+You are a strict medical QA grader.
 
 Question: {question}
-Reference: {reference}
-Prediction: {prediction}
+Reference Answer: {reference}
+Predicted Answer: {prediction}
 
-Score:
-- 2: CORRECT (semantically equivalent)
-- 1: PARTIAL (some correct info)
-- 0: WRONG (incorrect or irrelevant)
+Assign one score:
+- 2 = semantically equivalent and medically correct
+- 1 = partially correct but incomplete/imprecise
+- 0 = wrong, contradictory, irrelevant, or too generic
 
-Respond: {"score": <0|1|2>, "reasoning": "..."}
+Output exactly one line:
+score: <0|1|2>
 \end{verbatim}
 
 \section{Model Configurations}
