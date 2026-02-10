@@ -1,0 +1,22 @@
+name: exp_14_hf_flan_uncertainty
+
+strategy: closed_book
+description: "Prompt engineering with uncertainty-allowed prompt on local Flan-T5"
+
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 128
+device: cpu
+
+prompt_id: uncertainty_allowed
+
+split: tiny_test
+limit: 80
+
+objective: "Test abstention-style prompting to reduce confident errors"
+expected_cost_usd: 0.0
+
+notes: |
+  - Same model/settings as strict baseline
+  - Allows explicit uncertainty response

@@ -1,0 +1,29 @@
+name: exp_13_hf_flan_flashcard
+
+strategy: closed_book
+description: "Prompt engineering with flashcard-style prompt on local Flan-T5"
+
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 128
+device: cpu
+
+prompt_id: flashcard_style
+
+split: tiny_test
+limit: 80
+
+objective: "Measure impact of flashcard-style prompting on local model"
+expected_cost_usd: 0.0
+
+ablation_of: exp_12_hf_flan_strict
+ablation_variable: prompt_style
+ablation_values:
+  - one_sentence_strict
+  - flashcard_style
+  - uncertainty_allowed
+
+notes: |
+  - Same model/settings as strict baseline
+  - Only prompt style changes

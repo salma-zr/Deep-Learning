@@ -1,0 +1,29 @@
+name: exp_16_rag_hf_topk5
+
+strategy: rag
+description: "RAG ablation with more retrieved documents (top_k=5)"
+
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 128
+device: cpu
+
+retriever_type: wikipedia
+top_k: 5
+max_context_chars: 2600
+
+prompt_id: one_sentence_strict
+
+split: tiny_test
+limit: 50
+
+objective: "Assess context-size trade-off in local RAG setup"
+expected_cost_usd: 0.0
+
+ablation_of: exp_15_rag_hf_wikipedia
+ablation_variable: top_k
+ablation_values: [3, 5]
+
+notes: |
+  - Compare retrieval breadth vs added context noise

@@ -1,0 +1,22 @@
+name: exp_12_hf_flan_strict
+
+strategy: closed_book
+description: "Local CPU baseline with Flan-T5 and strict one-sentence prompt"
+
+backend: huggingface
+model: google/flan-t5-base
+temperature: 0.0
+max_tokens: 128
+device: cpu
+
+prompt_id: one_sentence_strict
+
+split: tiny_test
+limit: 80
+
+objective: "Establish fully local closed-book baseline with strict formatting"
+expected_cost_usd: 0.0
+
+notes: |
+  - CPU-only execution for reproducibility without API keys
+  - Uses concise one-sentence prompt
