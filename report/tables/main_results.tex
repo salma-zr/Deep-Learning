@@ -2,16 +2,17 @@
 \centering
 \caption{Main Results: Comparison of Medical QA Approaches}
 \label{tab:main_results}
-\begin{tabular}{lcccc}
+\begin{tabular}{lcccccc}
 \toprule
-Experiment & ROUGE-L & BLEU & Latency (ms) & N \\
+Experiment & ROUGE-L & BLEU & Judge & Correct \% & Latency (ms) & N \\
 \midrule
-exp_15_rag_hf_wikipedia & 0.0866 & 0.0001 & 925.1218 & 50 \\
-exp_13_hf_flan_flashcard & 0.1328 & 0.0009 & 265.1750 & 80 \\
-exp_11_hf_flan_t5 & 0.0855 & 0.0000 & 189.5464 & 80 \\
-exp_14_hf_flan_uncertainty & 0.0004 & 0.0000 & 120.9768 & 80 \\
-exp_16_rag_hf_topk5 & 0.0576 & 0.0001 & 1450.5536 & 50 \\
-exp_12_hf_flan_strict & 0.1025 & 0.0000 & 231.6121 & 80 \\
+exp_15_rag_hf_wikipedia & 0.0866 & 0.0001 & 1.0000 & 2.0000 & 925.1218 & 50 \\
+exp_13_hf_flan_flashcard & 0.1328 & 0.0009 & 1.0250 & 2.5000 & 265.1750 & 80 \\
+exp_17_rag_hf_web & 0.1582 & 0.0003 & 1.0200 & 4.0000 & 1243.6535 & 50 \\
+exp_11_hf_flan_t5 & 0.0855 & 0.0000 & 1.0250 & 2.5000 & 189.5464 & 80 \\
+exp_14_hf_flan_uncertainty & 0.0004 & 0.0000 & 0.9875 & 0.0000 & 120.9768 & 80 \\
+exp_16_rag_hf_topk5 & 0.0576 & 0.0001 & 0.9800 & 2.0000 & 1450.5536 & 50 \\
+exp_12_hf_flan_strict & 0.1025 & 0.0000 & 1.0125 & 1.2500 & 231.6121 & 80 \\
 \bottomrule
 \end{tabular}
 \end{table}

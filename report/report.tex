@@ -248,7 +248,7 @@ Additional metrics for output quality:
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.9\textwidth]{figures/metrics_comparison.png}
-        \caption{Comparison of ROUGE-L and BLEU across local closed-book and RAG experiments.}
+        \caption{Comparison of ROUGE-L, BLEU, and local LLM-judge mean across local closed-book and RAG experiments.}
         \label{fig:metrics}
     \end{figure}
 }{
@@ -257,13 +257,13 @@ Additional metrics for output quality:
 
 \subsection{Judge Score Distribution}
 
-This run was executed without cloud API credentials to keep the pipeline fully local and cost-free, so LLM-as-a-judge scores are not available in the final tables.
+LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge model (no cloud API required).
 
 \IfFileExists{figures/judge_distribution.png}{
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.9\textwidth]{figures/judge_distribution.png}
-        \caption{Judge distribution placeholder (judge step skipped in this local run).}
+        \caption{Distribution of local LLM judge scores (Correct/Partial/Wrong) by experiment.}
         \label{fig:judge}
     \end{figure}
 }{
@@ -298,7 +298,8 @@ Selected examples from each category (best, worst, controversial) are summarized
 \subsection{Successful Cases}
 
 \begin{itemize}
-    \item The flashcard-style prompt (\texttt{exp\_13\_hf\_flan\_flashcard}) gave the strongest lexical alignment (ROUGE-L 0.1328), with concise outputs and low multi-sentence rate (3.75\%).
+    \item The web-based RAG setup (\texttt{exp\_17\_rag\_hf\_web}) achieved the highest lexical scores (ROUGE-L 0.1582, BLEU 0.0003), outperforming the Wikipedia RAG variant and all closed-book local baselines.
+    \item Among closed-book variants, the flashcard-style prompt (\texttt{exp\_13\_hf\_flan\_flashcard}) gave the strongest lexical alignment (ROUGE-L 0.1328), with concise outputs and low multi-sentence rate (3.75\%).
     \item Questions with explicit procedural wording (e.g., effects of ion transport, definition-style prompts) were generally handled better than broad clinical management questions.
     \item The strict one-sentence setup (\texttt{exp\_12\_hf\_flan\_strict}) improved consistency over the simple direct baseline (\texttt{exp\_11}), suggesting prompt structure matters even for the same model.
 \end{itemize}
@@ -308,16 +309,18 @@ Selected examples from each category (best, worst, controversial) are summarized
 \begin{itemize}
     \item The uncertainty-allowed prompt (\texttt{exp\_14}) collapsed into systematic abstention: 100\% ``Insufficient information'', near-zero ROUGE-L (0.0004).
     \item Some answers were fluent but medically off-target (e.g., wrong entities for enzyme/pathogen questions), indicating factual brittleness of small local models.
+    \item Increasing RAG context from top\_k=3 to top\_k=5 degraded quality (ROUGE-L 0.0866 \(\rightarrow\) 0.0576) while increasing latency (925ms \(\rightarrow\) 1451ms), suggesting context-noise effects.
     \item Long multi-concept questions (diagnosis + treatment + mechanism) showed lower overlap and more generic responses.
 \end{itemize}
 
 \subsection{Controversial Cases}
 
-Without judge scores, controversial cases were identified from low lexical overlap but partially plausible responses:
+Several experiments show metric-judge divergence:
 
 \begin{itemize}
-    \item Some RAG responses were semantically related but phrased too generally, yielding low ROUGE/BLEU despite partially relevant content.
-    \item Several closed-book responses matched the sentence format but omitted crucial medical specificity, which automatic overlap metrics only partially capture.
+    \item The uncertainty prompt has the lowest lexical overlap but a near-partial judge mean (0.9875), showing that abstention can be interpreted as ``partially acceptable'' by the local judge while remaining uninformative for QA.
+    \item RAG web has the best lexical scores, but judge-correct remains low (4\%), indicating many outputs are still treated as incomplete rather than fully correct.
+    \item Judge means cluster near 1.0 across methods, highlighting the need for careful interpretation and possible human validation.
 \end{itemize}
 
 \section{Discussion}
@@ -325,10 +328,11 @@ Without judge scores, controversial cases were identified from low lexical overl
 \subsection{Key Findings}
 
 \begin{enumerate}
-    \item \textbf{Prompt engineering had the largest positive impact in this local setting.} Flashcard prompting improved ROUGE-L from 0.0855 (simple direct baseline) to 0.1328 (+55\% relative).
-    \item \textbf{RAG was not automatically better with a small generator.} RAG top\_k=3 reached ROUGE-L 0.0866, while top\_k=5 dropped to 0.0576 and increased latency from 925ms to 1451ms, showing context-noise and cost trade-offs.
-    \item \textbf{Abstention prompting requires calibration.} The uncertainty prompt over-triggered abstention (100\%), making outputs safe but uninformative.
-    \item \textbf{Compute-aware experimentation is feasible.} A fully local CPU pipeline produced reproducible results across multiple strategies with zero API cost, suitable for course constraints.
+    \item \textbf{Retrieval source matters.} Web RAG (\texttt{exp\_17}) outperformed Wikipedia RAG and closed-book variants on ROUGE/BLEU in this setup, suggesting broader retrieval coverage helped lexical alignment.
+    \item \textbf{Prompt engineering remains important.} Flashcard prompting substantially improved closed-book quality versus simple direct prompting.
+    \item \textbf{More retrieved context is not always better.} The top\_k=5 RAG ablation increased latency and reduced quality versus top\_k=3.
+    \item \textbf{Abstention prompting requires calibration.} The uncertainty prompt over-triggered abstention (100\%), making outputs safe but low-utility.
+    \item \textbf{Compute-aware experimentation is feasible.} A fully local CPU pipeline produced reproducible multi-strategy results with zero API cost.
 \end{enumerate}
 
 \subsection{Limitations}
@@ -346,7 +350,7 @@ Without judge scores, controversial cases were identified from low lexical overl
 
 \begin{itemize}
     \item ROUGE/BLEU penalize valid paraphrases
-    \item LLM judge was not run in this final local execution (no API-based semantic scoring)
+    \item Local LLM judge (\texttt{flan-t5-large}) showed strong bias toward score 1 (partial), limiting discriminative power
     \item Semantic equivalence is subjective in medical domain
     \item No gold-standard human evaluation
 \end{itemize}
