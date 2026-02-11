@@ -93,11 +93,20 @@ def train(
         use_lora=config.get("use_lora", True),
         lora_r=config.get("lora_r", 16),
         lora_alpha=config.get("lora_alpha", 32),
+        lora_dropout=config.get("lora_dropout", 0.05),
         load_in_4bit=config.get("load_in_4bit", True),
+        load_in_8bit=config.get("load_in_8bit", False),
         num_epochs=config.get("num_epochs", 3),
         batch_size=config.get("batch_size", 4),
+        gradient_accumulation_steps=config.get("gradient_accumulation_steps", 4),
         learning_rate=config.get("learning_rate", 2e-4),
+        warmup_ratio=config.get("warmup_ratio", 0.03),
+        max_length=config.get("max_length", 512),
         output_dir=config.get("output_dir", "models/finetuned"),
+        logging_steps=config.get("logging_steps", 10),
+        save_steps=config.get("save_steps", 100),
+        eval_steps=config.get("eval_steps", 100),
+        seed=config.get("seed", 42),
     )
     
     console.print(f"[bold blue]Starting fine-tuning...[/bold blue]")
@@ -107,10 +116,24 @@ def train(
     
     # Determine training data path
     if train_data is None:
-        train_data = get_project_root() / "data" / "finetune" / "train_alpaca.jsonl"
+        finetune_dir = get_project_root() / "data" / "finetune"
+        prompt_style = config.get("prompt_style", "alpaca")
+        train_size = config.get("train_size")
+
+        # Prefer size-specific prepared file when train_size is provided.
+        if train_size is not None:
+            candidate = finetune_dir / f"train_{prompt_style}_{int(train_size)}.jsonl"
+        else:
+            candidate = finetune_dir / f"train_{prompt_style}.jsonl"
+
+        train_data = candidate
         if not Path(train_data).exists():
             console.print("[yellow]Training data not found. Preparing...[/yellow]")
-            train_data = prepare_training_data()
+            train_data = prepare_training_data(
+                split_name=config.get("split", "train"),
+                max_examples=train_size,
+                prompt_style=prompt_style,
+            )
     
     # Create trainer and train
     trainer = FineTuner(ft_config)
