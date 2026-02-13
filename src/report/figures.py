@@ -80,11 +80,13 @@ def plot_metrics_comparison(
     
     x = range(len(results_df))
     width = 0.8 / len(available_metrics)
+    max_metric_value = 0.0
     
     for i, metric in enumerate(available_metrics):
         offset = (i - len(available_metrics) / 2 + 0.5) * width
-        values = results_df[metric].fillna(0)
-        bars = ax.bar([xi + offset for xi in x], values, width, label=metric)
+        values = pd.to_numeric(results_df[metric], errors="coerce").fillna(0)
+        max_metric_value = max(max_metric_value, float(values.max()))
+        ax.bar([xi + offset for xi in x], values, width, label=metric)
     
     ax.set_xlabel("Experiment")
     ax.set_ylabel("Score")
@@ -92,7 +94,8 @@ def plot_metrics_comparison(
     ax.set_xticks(x)
     ax.set_xticklabels(results_df["experiment"], rotation=45, ha="right")
     ax.legend()
-    ax.set_ylim(0, 1.1)
+    y_upper = 1.1 if max_metric_value <= 1.0 else max(1.1, max_metric_value * 1.15)
+    ax.set_ylim(0, y_upper)
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
@@ -151,14 +154,17 @@ def plot_ablation_curve(
     fig, ax = plt.subplots(figsize=(10, 6))
     metrics = ["rougeL", "judge_mean"]
     colors = ["#2ecc71", "#3498db"]
+    max_metric_value = 0.0
 
     if ft_rows:
         results_df = pd.DataFrame(ft_rows).sort_values("x")
         for metric, color in zip(metrics, colors):
             if metric in results_df.columns:
+                values = pd.to_numeric(results_df[metric], errors="coerce")
+                max_metric_value = max(max_metric_value, float(values.max()))
                 ax.plot(
                     results_df["x"],
-                    results_df[metric],
+                    values,
                     marker="o",
                     label=metric,
                     color=color,
@@ -196,9 +202,11 @@ def plot_ablation_curve(
         results_df = pd.DataFrame(rag_rows).sort_values("x")
         for metric, color in zip(metrics, colors):
             if metric in results_df.columns:
+                values = pd.to_numeric(results_df[metric], errors="coerce")
+                max_metric_value = max(max_metric_value, float(values.max()))
                 ax.plot(
                     results_df["x"],
-                    results_df[metric],
+                    values,
                     marker="o",
                     label=metric,
                     color=color,
@@ -211,7 +219,8 @@ def plot_ablation_curve(
 
     ax.set_ylabel("Score")
     ax.legend()
-    ax.set_ylim(0, 1.05)
+    y_upper = 1.05 if max_metric_value <= 1.0 else max(1.05, max_metric_value * 1.15)
+    ax.set_ylim(0, y_upper)
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
