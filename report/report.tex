@@ -39,7 +39,7 @@
 \maketitle
 
 \begin{abstract}
-This report presents a comparative medical question-answering study conducted in a student project setting on the Medical Flashcards dataset. We evaluate three families of approaches: local closed-book generation, retrieval-augmented generation (RAG), and QLoRA fine-tuning on Google Colab (1k/5k/20k training examples). Beyond reporting scores, we document implementation choices and practical constraints (compute budget, reproducibility, and safety). The final protocol combines lexical overlap (ROUGE-L, BLEU), a local semantic judge (\texttt{flan-t5-large}), latency/format statistics, and qualitative error analysis. The strongest lexical results in our run are obtained after fine-tuning (\texttt{finetune\_5k}: ROUGE-L 0.2757, BLEU 0.1428), while the best non-fine-tuned configuration is web-based RAG (\texttt{exp\_17}: ROUGE-L 0.1582). We also highlight failure modes (over-abstention under uncertainty prompting, judge bias toward partial scores) and discuss what is still required for clinical-grade reliability.
+We ran a comparative study on medical question answering using the Medical Flashcards dataset. The experiments cover three settings: local closed-book generation, retrieval-augmented generation (RAG), and QLoRA fine-tuning on Google Colab with 1k/5k/20k training subsets. We kept the protocol practical and reproducible, then evaluated with ROUGE-L, BLEU, a local semantic judge (\texttt{flan-t5-large}), latency/format statistics, and qualitative review. In our runs, the best lexical results come from fine-tuning (\texttt{finetune\_5k}: ROUGE-L 0.2757, BLEU 0.1428), while the strongest non-fine-tuned setup is web RAG (\texttt{exp\_17}: ROUGE-L 0.1582). We also report where things fail, especially over-abstention under uncertainty prompting and the local judge tendency to cluster around partial scores.
 
 \vspace{0.5em}
 \noindent\fcolorbox{warningborder}{warningbg}{%
@@ -53,7 +53,7 @@ This report presents a comparative medical question-answering study conducted in
 
 \section{Introduction}
 
-Medical question answering is a challenging task that requires both factual accuracy and appropriate response formatting. The proliferation of large language models (LLMs) has opened new possibilities for automating medical knowledge retrieval, but also raised concerns about reliability and hallucinations.
+Medical QA looks straightforward at first, but in practice it is hard to keep both factual accuracy and usable answer format. Large language models make the task more accessible, but they also introduce obvious risks, especially hallucinations and overconfident errors.
 
 This project explores various approaches to answering medical questions from a flashcard-style dataset, comparing:
 
@@ -75,24 +75,24 @@ Our objectives are:
 
 \subsection{Project Framing and Brainstorming}
 
-At the beginning of the project, we listed many possible directions (cloud APIs, local models, multiple retrievers, full fine-tuning, prompt variants). To keep the work both rigorous and feasible, we structured the exploration around controlled comparisons:
+At the start, we had too many possible directions (cloud APIs, local models, several retrievers, full fine-tuning, many prompt variants). We narrowed this down into controlled comparisons so the final report would stay coherent and executable:
 \begin{itemize}
     \item \textbf{Prompt axis}: same model, different prompts (strict, flashcard, uncertainty).
     \item \textbf{Retrieval axis}: same generator, different external sources (Wikipedia vs web) and different top\_k.
     \item \textbf{Evaluation axis}: combine automatic metrics, semantic judging, and manual qualitative checks.
 \end{itemize}
-This framing helped us avoid random trial-and-error and keep a coherent experimental narrative.
+This helped us avoid random trial-and-error and keep one consistent story from setup to evaluation.
 
 \subsection{Research Questions and Success Criteria}
 
-To keep the project academically focused, we translated our brainstorming into concrete research questions:
+To keep the project focused, we turned the brainstorming list into three concrete research questions:
 \begin{itemize}
     \item \textbf{RQ1 (Prompting):} With the same local model, how much can prompt design improve medical QA quality and output format?
     \item \textbf{RQ2 (Grounding):} Does RAG improve answer quality compared with closed-book generation, and under which retrieval settings?
     \item \textbf{RQ3 (Adaptation):} Does LoRA/QLoRA fine-tuning on domain data provide measurable gains over local non-fine-tuned baselines?
 \end{itemize}
 
-Success was defined as improvement that is not only visible on one metric, but coherent across at least three dimensions: lexical score, judge score, and qualitative plausibility.
+We treated an experiment as a real improvement only when gains were visible across at least three angles: lexical score, judge score, and qualitative plausibility.
 
 \section{Dataset}
 
@@ -131,7 +131,7 @@ The tiny test split is used for rapid iteration and debugging.
 
 \subsection{Pre-processing and Quality Checks}
 
-Before running experiments, we performed basic but important checks that strongly affected final report quality:
+Before running experiments, we did a few checks that ended up mattering a lot for report quality:
 \begin{itemize}
     \item verified deterministic split generation (seed 42),
     \item prepared explicit fine-tuning files by size (1k/5k/20k) and validated line counts,
@@ -143,7 +143,7 @@ Before running experiments, we performed basic but important checks that strongl
 
 \subsection{Closed-Book Generation}
 
-Direct question answering using pre-trained language models without additional context. The model must rely entirely on knowledge encoded during pre-training.
+In closed-book mode, the model answers directly with no retrieved context. So the output relies on what is already stored in model parameters.
 
 \textbf{Models evaluated}:
 \begin{itemize}
@@ -207,14 +207,14 @@ Combining retrieval with generation for knowledge grounding:
 
 \subsection{Fair Comparison Protocol}
 
-To keep comparisons meaningful, we used a simple protocol:
+To keep comparisons fair enough, we used a simple protocol:
 \begin{itemize}
     \item same evaluation split per comparison block (mainly \texttt{tiny\_test}),
     \item deterministic decoding (temperature 0.0),
     \item one answer per question (no reranking),
     \item identical evaluation pipeline for every predictions file (\texttt{metrics + judge + qualitative}).
 \end{itemize}
-This protocol does not eliminate all bias, but it prevents the most common unfair comparison issues (different sampling settings or different post-processing between methods).
+This does not remove all bias, but it avoids the most common comparison mistakes (different decoding settings or inconsistent post-processing across methods).
 
 \section{Evaluation Methodology}
 
@@ -234,7 +234,7 @@ N-gram precision with brevity penalty, computed using sacrebleu. Standard machin
 
 \subsection{LLM-as-a-Judge}
 
-For this final report, we use a local judge model (\texttt{google/flan-t5-large}) to assess semantic equivalence. We initially planned to use a cloud judge, but we prioritized a fully reproducible local pipeline:
+For this report, we used a local judge (\texttt{google/flan-t5-large}) for semantic scoring. We initially planned a cloud judge, but we prioritized a fully reproducible local pipeline:
 
 \begin{itemize}
     \item \textbf{Score 2} (Correct): Semantically equivalent to reference
@@ -267,18 +267,18 @@ Additional metrics for output quality:
 
 \subsection{Executed Scope in This Report}
 
-The final reported scope combines local baselines with completed Colab fine-tuning runs:
+The final scope in this submission combines local baselines with completed Colab fine-tuning runs:
 \begin{itemize}
     \item \textbf{Closed-book local runs}: \texttt{exp\_11}, \texttt{exp\_12}, \texttt{exp\_13}, \texttt{exp\_14}.
     \item \textbf{RAG local runs}: \texttt{exp\_15}, \texttt{exp\_16}, \texttt{exp\_17}.
     \item \textbf{GPU fine-tuning runs}: \texttt{finetune\_1k}, \texttt{finetune\_5k}, \texttt{finetune\_20k} (trained on Colab, evaluated with the same pipeline).
     \item \textbf{Judge}: local \texttt{flan-t5-large}, identical rubric across all experiments.
 \end{itemize}
-Cloud API baselines are supported by the codebase but were intentionally left outside the final comparison table due to key/budget constraints at report-freeze time.
+The repository supports cloud API baselines, but we left them out of the final comparison table because of key and budget constraints at freeze time.
 
 \subsection{Remaining Extensions Beyond This Submission}
 
-The following extensions remain useful for future work, but were not required to close the current report:
+These extensions are still useful as follow-up work, but they were not required to close the current version:
 \begin{itemize}
     \item add cloud baselines (\texttt{exp\_01}, \texttt{exp\_03}, \texttt{exp\_04}, \texttt{exp\_05}, \texttt{exp\_06}, \texttt{exp\_07}) for broader provider comparison,
     \item include a cross-check with at least one external judge model (API-based) to reduce single-judge bias,
@@ -305,7 +305,7 @@ The following extensions remain useful for future work, but were not required to
 
 \subsection{Implementation Notes from the Project Process}
 
-This section summarizes non-trivial engineering points that affected validity:
+These are implementation points that directly affected validity of the results:
 \begin{itemize}
     \item \textbf{Fine-tuning data-size bug fixed}: an early CLI path could silently use the full training file instead of the intended 1k/5k/20k subsets. We fixed this and enforced explicit dataset binding.
     \item \textbf{Judge prompt parsing fixed}: JSON braces in the prompt template initially caused formatting errors; prompt filling/parsing was hardened to avoid false judge failures.
@@ -324,16 +324,16 @@ This section summarizes non-trivial engineering points that affected validity:
 
 \subsection{Reading the Main Table}
 
-The main table combines heterogeneous settings (closed-book, RAG, and fine-tuned models), so interpretation must focus on \emph{relative comparisons within each family} before global ranking. In particular, latency is not directly comparable between tiny local generators and fine-tuned TinyLlama inference on CPU, but it still informs deployment trade-offs.
+The main table mixes different families (closed-book, RAG, fine-tuned), so we read it in two steps: first compare inside each family, then compare globally. Latency is especially tricky here. Tiny local generators and fine-tuned TinyLlama on CPU are not directly comparable in speed, but the numbers are still useful for deployment trade-offs.
 
 \subsection{Main Quantitative Observations}
 
 \begin{enumerate}
-    \item \textbf{Fine-tuning clearly dominates lexical metrics in our run.} The best score is obtained by \texttt{finetune\_5k} (ROUGE-L 0.2757, BLEU 0.1428), followed by \texttt{finetune\_20k} (ROUGE-L 0.2714, BLEU 0.1445) and \texttt{finetune\_1k} (ROUGE-L 0.2607, BLEU 0.1299).
-    \item \textbf{Data scaling helps, but not strictly monotonically for all metrics.} Moving from 1k to 5k improves both ROUGE-L and BLEU; moving to 20k gives the highest judge mean (1.24) but a slightly lower ROUGE-L than 5k, suggesting a mild quality/stability trade-off rather than a simple ``more data always better'' effect.
-    \item \textbf{Prompt engineering remains meaningful even without fine-tuning.} Within local closed-book runs, flashcard prompting (\texttt{exp\_13}, ROUGE-L 0.1328) outperforms strict one-sentence prompting (\texttt{exp\_12}, 0.1025) and simple direct prompting (\texttt{exp\_11}, 0.0855).
-    \item \textbf{RAG quality depends strongly on retrieval configuration.} Web retrieval (\texttt{exp\_17}, ROUGE-L 0.1582) is stronger than Wikipedia top-k=3 (\texttt{exp\_15}, 0.0866), while increasing to top-k=5 (\texttt{exp\_16}, 0.0576) hurts both quality and latency.
-    \item \textbf{Latency/quality trade-off is explicit.} Closed-book Flan-T5 baselines are fast (roughly 120--265ms mean), RAG adds retrieval overhead (roughly 925--1451ms mean), and fine-tuned TinyLlama on CPU is the slowest at inference time (roughly 6.3--6.7s mean) while providing the best answer overlap.
+    \item Fine-tuning is ahead on lexical metrics in our runs. The top ROUGE-L is \texttt{finetune\_5k} (0.2757), with \texttt{finetune\_20k} at 0.2714 and \texttt{finetune\_1k} at 0.2607. BLEU follows the same pattern overall (\texttt{finetune\_5k}: 0.1428, \texttt{finetune\_20k}: 0.1445, \texttt{finetune\_1k}: 0.1299).
+    \item Scaling data helps, but not in a perfectly monotonic way on every metric. Going from 1k to 5k improves ROUGE-L and BLEU, while 20k gives the highest judge mean (1.24) with slightly lower ROUGE-L than 5k.
+    \item Prompt engineering still matters even before fine-tuning. In closed-book local runs, flashcard prompting (\texttt{exp\_13}, ROUGE-L 0.1328) is stronger than strict one-sentence prompting (\texttt{exp\_12}, 0.1025) and simple direct prompting (\texttt{exp\_11}, 0.0855).
+    \item RAG performance is very sensitive to retrieval setup. Web retrieval (\texttt{exp\_17}, ROUGE-L 0.1582) beats Wikipedia top-k=3 (\texttt{exp\_15}, 0.0866), while moving to top-k=5 (\texttt{exp\_16}, 0.0576) hurts both quality and latency.
+    \item The latency/quality trade-off is clear in practice. Closed-book Flan-T5 runs are fast (roughly 120--265ms mean), RAG adds retrieval cost (roughly 925--1451ms mean), and fine-tuned TinyLlama on CPU is slowest at inference (roughly 6.3--6.7s mean) but gives the best overlap scores.
 \end{enumerate}
 
 \subsection{Metrics Comparison}
@@ -413,24 +413,24 @@ Fine-tuning ablation was executed on Colab (1k/5k/20k training subsets), then ev
 
 \section{Qualitative Analysis}
 
-Qualitative reading was performed from the generated HTML reports and manual inspection of representative examples across all families (closed-book, RAG, fine-tuned). The objective was not to cherry-pick only best outputs, but to understand recurring behavior patterns.
+We used the generated HTML reports plus manual inspection of representative examples from all families (closed-book, RAG, fine-tuned). The goal was to track recurring behavior, not to only show best-case outputs.
 
 \subsection{Successful Cases}
 
 \begin{itemize}
-    \item Fine-tuned models (\texttt{finetune\_1k/5k/20k}) produce substantially richer medical content than non-fine-tuned local baselines, which is consistent with their higher ROUGE-L/BLEU values.
-    \item \texttt{finetune\_20k} reaches the highest judge mean (1.24) and best correct rate among reported runs (24\%), suggesting improved semantic adequacy even when lexical gain over \texttt{finetune\_5k} is small.
-    \item Among non-fine-tuned methods, web RAG (\texttt{exp\_17}) is the strongest lexical configuration (ROUGE-L 0.1582), showing that retrieval source quality matters.
-    \item Flashcard prompting (\texttt{exp\_13}) improves both lexical overlap and output structure versus simple direct prompting, confirming that prompt format remains a high-leverage low-cost intervention.
+    \item Fine-tuned models (\texttt{finetune\_1k/5k/20k}) generally produce richer medical answers than non-fine-tuned local baselines, which matches the ROUGE-L/BLEU gap.
+    \item \texttt{finetune\_20k} has the highest judge mean (1.24) and the highest correct rate in this report (24\%), even though lexical gain over \texttt{finetune\_5k} is small.
+    \item In non-fine-tuned settings, web RAG (\texttt{exp\_17}) is the strongest lexical setup (ROUGE-L 0.1582), so retrieval source choice is clearly important.
+    \item Flashcard prompting (\texttt{exp\_13}) improves both overlap and structure relative to simple direct prompting.
 \end{itemize}
 
 \subsection{Failure Cases}
 
 \begin{itemize}
-    \item The uncertainty-allowed prompt (\texttt{exp\_14}) collapsed into systematic abstention: 100\% ``Insufficient information'', near-zero ROUGE-L (0.0004).
-    \item Increasing RAG context from top\_k=3 to top\_k=5 degraded quality (ROUGE-L 0.0866 \(\rightarrow\) 0.0576) while increasing latency (925ms \(\rightarrow\) 1451ms), indicating retrieval noise and context dilution.
-    \item Fine-tuned outputs are much longer (around 310 characters on average) and frequently multi-sentence, which can violate strict flashcard-style formatting constraints even when semantic content improves.
-    \item Some biologically plausible but incorrect details remain in all families, especially on multi-step or multi-entity questions; this confirms that factual hallucination is reduced but not removed by fine-tuning.
+    \item The uncertainty-allowed prompt (\texttt{exp\_14}) collapsed into near-total abstention: 100\% ``Insufficient information'' and ROUGE-L 0.0004.
+    \item Raising RAG context from top\_k=3 to top\_k=5 reduced quality (ROUGE-L 0.0866 \(\rightarrow\) 0.0576) and increased latency (925ms \(\rightarrow\) 1451ms), likely because of extra noise.
+    \item Fine-tuned outputs are much longer (around 310 characters on average) and often multi-sentence. That helps content, but it can violate strict flashcard formatting.
+    \item We still saw plausible but incorrect details across all families, mostly on multi-step or multi-entity questions.
 \end{itemize}
 
 \subsection{Controversial Cases}
@@ -438,9 +438,9 @@ Qualitative reading was performed from the generated HTML reports and manual ins
 Several experiments show metric-judge divergence:
 
 \begin{itemize}
-    \item \texttt{finetune\_5k} has the highest ROUGE-L (0.2757) but lower judge mean than \texttt{finetune\_20k}; lexical overlap and semantic adequacy do not rank models identically.
-    \item The uncertainty prompt has the worst lexical metrics but a near-partial judge mean (0.9875), revealing that the local judge may reward safe abstention more than expected.
-    \item Judge means remain concentrated around score 1 for many runs; therefore, the judge is useful as a complementary signal, not as a standalone verdict.
+    \item \texttt{finetune\_5k} has the highest ROUGE-L (0.2757), but \texttt{finetune\_20k} gets the higher judge mean. So lexical and semantic rankings do not fully align.
+    \item The uncertainty prompt has the weakest lexical metrics but still a near-partial judge mean (0.9875), which suggests the local judge may over-credit safe abstentions.
+    \item Judge means stay close to score 1 in many runs, so we use judge output as support, not as final truth.
 \end{itemize}
 
 \section{Discussion}
@@ -448,11 +448,11 @@ Several experiments show metric-judge divergence:
 \subsection{Key Findings}
 
 \begin{enumerate}
-    \item \textbf{Fine-tuning is the main performance lever in our setup.} The three fine-tuned runs dominate lexical metrics over all non-fine-tuned local baselines.
-    \item \textbf{Prompt engineering is still valuable before expensive training.} Flashcard-style prompting gives clear gains over simple and strict prompts with almost no extra cost.
-    \item \textbf{RAG behavior is configuration-sensitive.} Retrieval source and top-k materially change both quality and latency; ``more context'' is not automatically better.
-    \item \textbf{Metric triangulation is mandatory.} ROUGE/BLEU, judge scores, latency, and qualitative reading can disagree; relying on a single metric would lead to overconfident conclusions.
-    \item \textbf{The project reached a reproducible research baseline, not a deployable medical system.} We now have a coherent benchmark and ablation framework that can be extended, but safety validation remains insufficient for real clinical use.
+    \item Fine-tuning is the strongest performance lever in our setup; all three fine-tuned runs are ahead of non-fine-tuned local baselines on lexical metrics.
+    \item Prompt engineering is still worth doing before training. Flashcard-style prompting improves quality at almost zero extra cost.
+    \item RAG is configuration-sensitive. Retrieval source and top-k both affect quality and latency, and ``more context'' is not automatically better.
+    \item Metric triangulation is necessary. ROUGE/BLEU, judge output, latency, and qualitative reading do not always point in the same direction.
+    \item This project reaches a reproducible research baseline, not a deployment-ready medical assistant.
 \end{enumerate}
 
 \subsection{Limitations}
@@ -507,7 +507,7 @@ In practice, the largest hidden cost was not API billing but iteration time (run
 
 \subsection{Practical Recommendations}
 
-Based on our findings, a pragmatic roadmap for similar projects is:
+Based on what we observed, this is a practical roadmap for similar projects:
 
 \begin{itemize}
     \item \textbf{Phase 1 (baseline)}: run a local closed-book baseline with two prompt variants before adding complexity.
@@ -519,11 +519,11 @@ Based on our findings, a pragmatic roadmap for similar projects is:
 
 \section{Conclusion}
 
-This project delivers an end-to-end and reproducible comparison of medical QA strategies under realistic student constraints. The final version goes beyond a static benchmark: we iteratively improved the pipeline, executed Colab fine-tuning, and re-integrated quantitative and qualitative evidence into a coherent analysis.
+This project gives an end-to-end comparison of medical QA strategies under realistic student constraints. We did not stop at a single benchmark run: we iterated on the pipeline, completed Colab fine-tuning, and then re-ran evaluation so the final analysis stayed internally consistent.
 
-The central takeaway is practical: system quality is highly sensitive to design choices that are often treated as ``implementation details'' (prompt format, retrieval source, top-k, judge setup, and training data size). In our experiments, fine-tuning provides the strongest gains, but it does not eliminate failure modes; prompt/RAG decisions still matter and safety risks remain.
+The main takeaway is practical. Quality is highly sensitive to choices that look minor at first (prompt format, retrieval source, top-k, judge setup, and training data size). In our runs, fine-tuning gives the largest gains, but it does not remove failure modes; prompt and retrieval decisions still matter, and safety risks remain.
 
-\textbf{Main contributions}:
+\textbf{Main contributions in this report}:
 \begin{enumerate}
     \item Reproducible pipeline spanning generation, RAG, fine-tuning, evaluation, and report artifact generation.
     \item Controlled ablations on prompt style, retrieval configuration, and fine-tuning data size (1k/5k/20k).
@@ -531,7 +531,7 @@ The central takeaway is practical: system quality is highly sensitive to design 
     \item Transparent report of engineering issues and their impact on methodological validity.
 \end{enumerate}
 
-\textbf{Future work}:
+\textbf{Next steps}:
 \begin{itemize}
     \item Human expert evaluation with adjudication protocol (at least two annotators) on a 30--50 example audit set per main system.
     \item Add a second semantic metric (BERTScore) to reduce dependence on lexical overlap.
