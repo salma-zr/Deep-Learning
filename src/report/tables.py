@@ -11,6 +11,17 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _escape_latex(value: str) -> str:
+    """Escape a minimal set of LaTeX special characters."""
+    return (
+        value.replace("\\", r"\textbackslash{}")
+        .replace("&", r"\&")
+        .replace("%", r"\%")
+        .replace("_", r"\_")
+        .replace("#", r"\#")
+    )
+
+
 def _load_score_rows(scores_dir: Path, pattern: str = "*.csv") -> list[dict]:
     """Load score rows from CSV files matching a pattern."""
     rows = []
@@ -306,7 +317,13 @@ def _build_latex_table(
     
     # Data rows
     for _, row in df_filtered.iterrows():
-        values = [str(row[col]) if col in row else "-" for col in df_filtered.columns]
+        values = []
+        for col in df_filtered.columns:
+            if col not in row:
+                values.append("-")
+                continue
+            value = str(row[col])
+            values.append(_escape_latex(value))
         latex_lines.append(" & ".join(values) + " \\\\")
     
     latex_lines.extend([
