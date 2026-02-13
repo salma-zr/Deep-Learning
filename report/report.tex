@@ -533,7 +533,9 @@ The central takeaway is practical: system quality is highly sensitive to design 
 
 \textbf{Future work}:
 \begin{itemize}
-    \item Human expert evaluation with adjudication protocol (at least two annotators).
+    \item Human expert evaluation with adjudication protocol (at least two annotators) on a 30--50 example audit set per main system.
+    \item Add a second semantic metric (BERTScore) to reduce dependence on lexical overlap.
+    \item Report bootstrap confidence intervals for key metrics (especially ROUGE-L) in all result tables.
     \item Medical-source-constrained retrieval (guidelines/textbooks) with citation tracking.
     \item Better abstention calibration (confidence-aware uncertainty instead of fixed template wording).
     \item Comparative external judging (API judge + local judge) to quantify evaluator bias.

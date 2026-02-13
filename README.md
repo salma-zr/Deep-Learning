@@ -96,6 +96,9 @@ source venv/bin/activate  # Linux/Mac
 # Install dependencies
 pip install -e .
 
+# Optional: research-level evaluation extras (BERTScore)
+pip install -e .[research]
+
 # For GPU support (fine-tuning)
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
@@ -199,6 +202,16 @@ python -m src.eval.cli full results/preds/exp_01_openai_baseline.jsonl
 
 # Generate qualitative report
 python -m src.eval.cli qualitative results/preds/exp_01_openai_baseline_judged.jsonl
+
+# Research-level extras:
+# (a) ROUGE bootstrap confidence intervals
+python -m src.eval.cli metrics results/preds/exp_01_openai_baseline.jsonl --bootstrap-samples 1000
+
+# (b) Semantic metric with BERTScore (requires: pip install -e .[research])
+python -m src.eval.cli metrics results/preds/exp_01_openai_baseline.jsonl --bertscore --bertscore-model distilbert-base-uncased
+
+# (c) Prepare a human-annotation pack (30-50 samples recommended)
+python -m src.eval.cli prepare-human-annotation results/preds/exp_01_openai_baseline_judged.jsonl --n 40 --strategy balanced
 ```
 
 ### 6. Generate Report

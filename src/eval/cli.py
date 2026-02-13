@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Optional
+import random
 
 import typer
 from rich.console import Console
@@ -22,6 +23,22 @@ console = Console()
 def metrics(
     predictions_file: str = typer.Argument(..., help="Path to predictions JSONL"),
     output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output CSV file"),
+    bertscore: bool = typer.Option(False, "--bertscore", help="Include BERTScore metric"),
+    bertscore_model: str = typer.Option(
+        "distilbert-base-uncased",
+        "--bertscore-model",
+        help="Model used by BERTScore",
+    ),
+    bootstrap_samples: int = typer.Option(
+        0,
+        "--bootstrap-samples",
+        help="Bootstrap samples for ROUGE confidence intervals (0 disables)",
+    ),
+    bootstrap_ci: float = typer.Option(
+        95.0,
+        "--bootstrap-ci",
+        help="Confidence level percentage for bootstrap interval",
+    ),
 ):
     """Compute ROUGE and BLEU metrics for predictions."""
     console.print(f"[bold blue]Computing metrics for {predictions_file}...[/bold blue]")
@@ -45,6 +62,10 @@ def metrics(
         references=refs,
         latencies_ms=latencies if latencies else None,
         judge_scores=judge_scores,
+        include_bertscore=bertscore,
+        bertscore_model=bertscore_model,
+        bootstrap_samples=bootstrap_samples,
+        bootstrap_ci=bootstrap_ci,
     )
     
     # Display
@@ -163,12 +184,141 @@ def qualitative(
     console.print(f"[green]Report saved to {output_path}[/green]")
 
 
+@app.command("prepare-human-annotation")
+def prepare_human_annotation(
+    predictions_file: str = typer.Argument(..., help="Path to predictions JSONL"),
+    n_samples: int = typer.Option(40, "--n", "-n", help="Number of samples (30-50 recommended)"),
+    seed: int = typer.Option(42, "--seed", help="Random seed"),
+    strategy: str = typer.Option(
+        "balanced",
+        "--strategy",
+        help="Sampling strategy: balanced (by judge score if available) or random",
+    ),
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output CSV path"),
+):
+    """Create a human-annotation pack from model predictions."""
+    if strategy not in {"balanced", "random"}:
+        raise typer.BadParameter("strategy must be 'balanced' or 'random'")
+    if n_samples <= 0:
+        raise typer.BadParameter("n must be > 0")
+
+    examples = load_jsonl(predictions_file)
+    if not examples:
+        console.print("[red]No predictions found in file.[/red]")
+        raise typer.Exit(code=1)
+
+    target_n = min(n_samples, len(examples))
+    rng = random.Random(seed)
+
+    # Try balanced sampling by judge score when available.
+    sampled = []
+    if strategy == "balanced":
+        by_score = {0: [], 1: [], 2: []}
+        for ex in examples:
+            score = ex.get("judge_score")
+            if score in by_score:
+                by_score[score].append(ex)
+
+        non_empty_groups = [g for g in by_score.values() if g]
+        if non_empty_groups:
+            per_group = target_n // len(non_empty_groups)
+            remainder = target_n % len(non_empty_groups)
+            for idx, group in enumerate(non_empty_groups):
+                take = per_group + (1 if idx < remainder else 0)
+                if len(group) <= take:
+                    sampled.extend(group)
+                else:
+                    sampled.extend(rng.sample(group, take))
+
+            # Fill shortfall if one group is too small.
+            if len(sampled) < target_n:
+                used_ids = {s.get("id") for s in sampled}
+                pool = [ex for ex in examples if ex.get("id") not in used_ids]
+                fill_n = min(target_n - len(sampled), len(pool))
+                sampled.extend(rng.sample(pool, fill_n))
+        else:
+            sampled = rng.sample(examples, target_n)
+    else:
+        sampled = rng.sample(examples, target_n)
+
+    # Build annotation template.
+    rows = []
+    for i, ex in enumerate(sampled, 1):
+        rows.append(
+            {
+                "sample_id": i,
+                "id": ex.get("id"),
+                "question": ex.get("question"),
+                "reference": ex.get("reference"),
+                "prediction": ex.get("prediction"),
+                "model": ex.get("meta", {}).get("model", ""),
+                "prompt_id": ex.get("meta", {}).get("prompt_id", ""),
+                "auto_judge_score": ex.get("judge_score"),
+                "annotator_a_score_0_1_2": "",
+                "annotator_b_score_0_1_2": "",
+                "final_consensus_score_0_1_2": "",
+                "notes": "",
+            }
+        )
+
+    if output_file is None:
+        out_dir = get_project_root() / "results" / "human_eval"
+        ensure_dir(out_dir)
+        output_path = out_dir / f"{Path(predictions_file).stem}_human_eval_{len(rows)}.csv"
+    else:
+        output_path = Path(output_file)
+        ensure_dir(output_path)
+
+    df = pd.DataFrame(rows)
+    df.to_csv(output_path, index=False)
+
+    guide_path = output_path.with_suffix(".md")
+    guide_path.write_text(
+        "# Human Annotation Guide\n\n"
+        "Scoring rubric:\n"
+        "- 2: Correct (semantically equivalent and medically correct)\n"
+        "- 1: Partial (contains useful correct content but incomplete or imprecise)\n"
+        "- 0: Wrong (incorrect, contradictory, generic, or irrelevant)\n\n"
+        "Protocol:\n"
+        "1. Two annotators score independently.\n"
+        "2. Resolve disagreements and fill final_consensus_score_0_1_2.\n"
+        "3. Add notes for difficult/ambiguous cases.\n",
+        encoding="utf-8",
+    )
+
+    table = Table(title="Human Annotation Pack")
+    table.add_column("Field", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_row("Source file", predictions_file)
+    table.add_row("Sampling strategy", strategy)
+    table.add_row("Samples", str(len(rows)))
+    table.add_row("CSV", str(output_path))
+    table.add_row("Guide", str(guide_path))
+    console.print(table)
+
+
 @app.command()
 def full(
     predictions_file: str = typer.Argument(..., help="Path to predictions JSONL"),
     judge_model: str = typer.Option("gpt-4o-mini", "--judge-model", help="Judge model"),
     backend: str = typer.Option("openai", "--backend", help="Judge backend"),
     skip_judge: bool = typer.Option(False, "--skip-judge", help="Skip LLM judge"),
+    bertscore: bool = typer.Option(False, "--bertscore", help="Include BERTScore metric"),
+    bertscore_model: str = typer.Option(
+        "distilbert-base-uncased",
+        "--bertscore-model",
+        help="Model used by BERTScore",
+    ),
+    bootstrap_samples: int = typer.Option(
+        0,
+        "--bootstrap-samples",
+        help="Bootstrap samples for ROUGE confidence intervals (0 disables)",
+    ),
+    bootstrap_ci: float = typer.Option(
+        95.0,
+        "--bootstrap-ci",
+        help="Confidence level percentage for bootstrap interval",
+    ),
 ):
     """Run full evaluation pipeline (metrics + judge + qualitative)."""
     exp_name = Path(predictions_file).stem
@@ -188,6 +338,10 @@ def full(
         predictions=preds,
         references=refs,
         latencies_ms=latencies if latencies else None,
+        include_bertscore=bertscore,
+        bertscore_model=bertscore_model,
+        bootstrap_samples=bootstrap_samples,
+        bootstrap_ci=bootstrap_ci,
     )
     
     # 2. Run judge (unless skipped)

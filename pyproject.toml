@@ -59,6 +59,9 @@ dev = [
     "black>=24.1.0",
     "ruff>=0.1.0",
 ]
+research = [
+    "bert-score>=0.3.13",
+]
 gpu = [
     "torch>=2.1.0",
 ]
