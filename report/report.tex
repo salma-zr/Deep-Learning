@@ -21,12 +21,12 @@
 \definecolor{warningbg}{RGB}{255,243,205}
 \definecolor{warningborder}{RGB}{255,193,7}
 
-% Resolve artifact paths whether compiled from project root or report/ folder.
-\newcommand{\TablePath}[1]{tables/#1}
-\newcommand{\FigurePath}[1]{figures/#1}
+% Resolve artifact directories whether compiled from project root or report/ folder.
+\newcommand{\TableDir}{tables}
+\newcommand{\FigureDir}{figures}
 \IfFileExists{report/tables/main_results.tex}{
-    \renewcommand{\TablePath}[1]{report/tables/##1}
-    \renewcommand{\FigurePath}[1]{report/figures/##1}
+    \renewcommand{\TableDir}{report/tables}
+    \renewcommand{\FigureDir}{report/figures}
 }{}
 
 % Title
@@ -316,8 +316,8 @@ This section summarizes non-trivial engineering points that affected validity:
 \section{Results}
 
 % Auto-generated table
-\IfFileExists{\TablePath{main_results.tex}}{
-    \input{\TablePath{main_results.tex}}
+\IfFileExists{\TableDir/main_results.tex}{
+    \input{\TableDir/main_results.tex}
 }{
     \textit{[Results table will be generated after running experiments]}
 }
@@ -338,10 +338,10 @@ The main table combines heterogeneous settings (closed-book, RAG, and fine-tuned
 
 \subsection{Metrics Comparison}
 
-\IfFileExists{\FigurePath{metrics_comparison.png}}{
+\IfFileExists{\FigureDir/metrics_comparison.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{\FigurePath{metrics_comparison.png}}
+        \includegraphics[width=0.9\textwidth]{\FigureDir/metrics_comparison.png}
         \caption{Comparison of ROUGE-L, BLEU, and local LLM-judge mean across closed-book, RAG, and fine-tuned runs.}
         \label{fig:metrics}
     \end{figure}
@@ -353,10 +353,10 @@ The main table combines heterogeneous settings (closed-book, RAG, and fine-tuned
 
 LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge model (no cloud API required).
 
-\IfFileExists{\FigurePath{judge_distribution.png}}{
+\IfFileExists{\FigureDir/judge_distribution.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{\FigurePath{judge_distribution.png}}
+        \includegraphics[width=0.9\textwidth]{\FigureDir/judge_distribution.png}
         \caption{Distribution of local LLM judge scores (Correct/Partial/Wrong) by experiment.}
         \label{fig:judge}
     \end{figure}
@@ -366,10 +366,10 @@ LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge 
 
 \subsection{Latency vs Quality Trade-off}
 
-\IfFileExists{\FigurePath{latency_quality_tradeoff.png}}{
+\IfFileExists{\FigureDir/latency_quality_tradeoff.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{\FigurePath{latency_quality_tradeoff.png}}
+        \includegraphics[width=0.9\textwidth]{\FigureDir/latency_quality_tradeoff.png}
         \caption{Trade-off between mean latency and ROUGE-L (color indicates judge mean).}
         \label{fig:latency_tradeoff}
     \end{figure}
@@ -379,10 +379,10 @@ LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge 
 
 \subsection{Output Format Statistics}
 
-\IfFileExists{\FigurePath{format_statistics.png}}{
+\IfFileExists{\FigureDir/format_statistics.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.9\textwidth]{\FigurePath{format_statistics.png}}
+        \includegraphics[width=0.9\textwidth]{\FigureDir/format_statistics.png}
         \caption{Format-related behavior by experiment (multi-sentence, insufficient-information, and empty outputs).}
         \label{fig:format_stats}
     \end{figure}
@@ -394,16 +394,16 @@ LLM-as-a-judge was run locally using \texttt{google/flan-t5-large} as the judge 
 
 Fine-tuning ablation was executed on Colab (1k/5k/20k training subsets), then evaluated with the same local pipeline as other experiments. This gives a consistent view of how training-set size affects downstream QA quality.
 
-\IfFileExists{\TablePath{ablation.tex}}{
-    \input{\TablePath{ablation.tex}}
+\IfFileExists{\TableDir/ablation.tex}{
+    \input{\TableDir/ablation.tex}
 }{
     \textit{[Ablation table will be generated after running experiments]}
 }
 
-\IfFileExists{\FigurePath{ablation_curve.png}}{
+\IfFileExists{\FigureDir/ablation_curve.png}{
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\textwidth]{\FigurePath{ablation_curve.png}}
+        \includegraphics[width=0.8\textwidth]{\FigureDir/ablation_curve.png}
         \caption{Fine-tuning ablation curve: effect of training data size (1k/5k/20k) on ROUGE-L and judge mean.}
         \label{fig:ablation}
     \end{figure}
