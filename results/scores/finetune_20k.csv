@@ -1,0 +1,2 @@
+experiment,rouge1,rouge2,rougeL,bleu,avg_length_chars,avg_length_words,multi_sentence_pct,empty_pct,insufficient_info_pct,latency_mean_ms,latency_median_ms,latency_p95_ms,latency_min_ms,latency_max_ms,n_examples,judge_mean,judge_correct_pct,judge_partial_pct,judge_wrong_pct
+finetune_20k,0.3494,0.1856,0.2714,0.1445,310.98,51.18,100.0,0.0,0.0,6363.3981,6337.2991,6708.8386,6166.8164,6835.1954,50,1.24,24.0,76.0,0.0
